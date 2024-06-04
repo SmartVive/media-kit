@@ -25,6 +25,8 @@ Widget MaterialVideoControls(VideoState state) {
   );
 }
 
+MaterialVideoControlsThemeData theme(BuildContext context) => _theme(context);
+
 /// [MaterialVideoControlsThemeData] available in this [context].
 MaterialVideoControlsThemeData _theme(BuildContext context) =>
     FullscreenInheritedWidget.maybeOf(context) == null
@@ -985,8 +987,9 @@ class _MaterialVideoControlsState extends State<_MaterialVideoControls> {
                         ),
                       ),
                     ),
-                    if (mount)
-                      Padding(
+                    IgnorePointer(
+                      ignoring: !mount,
+                      child: Padding(
                         padding: _theme(context).padding ??
                             (
                                 // Add padding in fullscreen!
@@ -1064,6 +1067,7 @@ class _MaterialVideoControlsState extends State<_MaterialVideoControls> {
                           ],
                         ),
                       ),
+                    )
                   ],
                 ),
               ),
