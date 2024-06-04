@@ -48,6 +48,8 @@ const kDefaultMaterialVideoControlsThemeDataFullscreen =
   brightnessGesture: true,
   seekGesture: true,
   gesturesEnabledWhileControlsVisible: true,
+  playOrPauseOnDoubleTap: true,
+  playOrPauseOnDoubleTapEnabledWhileControlsVisible: true,
   seekOnDoubleTap: true,
   seekOnDoubleTapEnabledWhileControlsVisible: true,
   visibleOnMount: false,
@@ -135,6 +137,10 @@ class MaterialVideoControlsThemeData {
   /// Whether to allow gesture controls to work while controls are visible.
   /// NOTE: This option is ignored when gestures are false.
   final bool gesturesEnabledWhileControlsVisible;
+
+  final bool playOrPauseOnDoubleTap;
+
+  final bool playOrPauseOnDoubleTapEnabledWhileControlsVisible;
 
   /// Whether to enable double tap to seek on left or right side of the screen.
   final bool seekOnDoubleTap;
@@ -286,6 +292,8 @@ class MaterialVideoControlsThemeData {
     this.brightnessGesture = false,
     this.seekGesture = false,
     this.gesturesEnabledWhileControlsVisible = true,
+    this.playOrPauseOnDoubleTap = false,
+    this.playOrPauseOnDoubleTapEnabledWhileControlsVisible = true,
     this.seekOnDoubleTap = false,
     this.seekOnDoubleTapEnabledWhileControlsVisible = true,
     this.seekOnDoubleTapLayoutTapsRatios = const [1, 1, 1],
@@ -347,6 +355,8 @@ class MaterialVideoControlsThemeData {
     bool? brightnessGesture,
     bool? seekGesture,
     bool? gesturesEnabledWhileControlsVisible,
+    bool? playOrPauseOnDoubleTap,
+    bool? playOrPauseOnDoubleTapEnabledWhileControlsVisible,
     bool? seekOnDoubleTap,
     bool? seekOnDoubleTapEnabledWhileControlsVisible,
     List<int>? seekOnDoubleTapLayoutTapsRatios,
@@ -398,6 +408,9 @@ class MaterialVideoControlsThemeData {
       gesturesEnabledWhileControlsVisible:
           gesturesEnabledWhileControlsVisible ??
               this.gesturesEnabledWhileControlsVisible,
+      playOrPauseOnDoubleTap: playOrPauseOnDoubleTap ?? this.playOrPauseOnDoubleTap,
+      playOrPauseOnDoubleTapEnabledWhileControlsVisible:
+          playOrPauseOnDoubleTapEnabledWhileControlsVisible ?? this.playOrPauseOnDoubleTapEnabledWhileControlsVisible,
       seekOnDoubleTap: seekOnDoubleTap ?? this.seekOnDoubleTap,
       seekOnDoubleTapEnabledWhileControlsVisible:
           seekOnDoubleTapEnabledWhileControlsVisible ??
@@ -868,6 +881,8 @@ class _MaterialVideoControlsState extends State<_MaterialVideoControls> {
     var seekOnDoubleTapEnabledWhileControlsAreVisible =
         (_theme(context).seekOnDoubleTap &&
             _theme(context).seekOnDoubleTapEnabledWhileControlsVisible);
+    var playOrPauseOnDoubleTapEnabledWhileControlsAreVisible =
+        (_theme(context).playOrPauseOnDoubleTap && _theme(context).playOrPauseOnDoubleTapEnabledWhileControlsVisible);
     assert(_theme(context).seekOnDoubleTapLayoutTapsRatios.length == 3,
         "The number of seekOnDoubleTapLayoutTapsRatios must be 3, i.e. [1, 1, 1]");
     assert(_theme(context).seekOnDoubleTapLayoutWidgetRatios.length == 3,
@@ -921,9 +936,10 @@ class _MaterialVideoControlsState extends State<_MaterialVideoControls> {
                       right: 16.0,
                       bottom: 16.0 + subtitleVerticalShiftOffset,
                       child: Listener(
-                        onPointerDown: (event) => _handlePointerDown(event),
+                        //onPointerDown: (event) => _handlePointerDown(event),
                         child: GestureDetector(
-                          onTapDown: (details) => _handleTapDown(details),
+                          //onTapDown: (details) => _handleTapDown(details),
+                          onTap: onTap,
                           onDoubleTapDown: _handleDoubleTapDown,
                           onLongPress: _theme(context).speedUpOnLongPress
                               ? _handleLongPress
@@ -935,18 +951,23 @@ class _MaterialVideoControlsState extends State<_MaterialVideoControls> {
                             if (_tapPosition == null) {
                               return;
                             }
-                            if (_isInRightSegment(_tapPosition!.dx)) {
+
+                            if (_isInCenterSegment(_tapPosition!.dx) ||
+                                !((!mount && _theme(context).seekOnDoubleTap) ||
+                                    seekOnDoubleTapEnabledWhileControlsAreVisible)) {
+                              if ((!mount && _theme(context).playOrPauseOnDoubleTap) ||
+                                  playOrPauseOnDoubleTapEnabledWhileControlsAreVisible) {
+                                controller(context).player.playOrPause();
+                              }
+                            } else if (_isInRightSegment(_tapPosition!.dx)) {
                               if ((!mount && _theme(context).seekOnDoubleTap) ||
                                   seekOnDoubleTapEnabledWhileControlsAreVisible) {
                                 onDoubleTapSeekForward();
                               }
-                            } else {
-                              if (_isInLeftSegment(_tapPosition!.dx)) {
-                                if ((!mount &&
-                                        _theme(context).seekOnDoubleTap) ||
-                                    seekOnDoubleTapEnabledWhileControlsAreVisible) {
-                                  onDoubleTapSeekBackward();
-                                }
+                            } else if (_isInLeftSegment(_tapPosition!.dx)) {
+                              if ((!mount && _theme(context).seekOnDoubleTap) ||
+                                  seekOnDoubleTapEnabledWhileControlsAreVisible) {
+                                onDoubleTapSeekBackward();
                               }
                             }
                           },
