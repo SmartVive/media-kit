@@ -1282,14 +1282,15 @@ class NativePlayer extends PlatformPlayer {
           return;
         }
 
-        await _command(
-          [
-            'sub-add',
-            uri,
-            'select',
-            track.title ?? 'external',
-            track.language ?? 'auto',
-          ],
+        await compute(
+          _subAdd,
+          _SubAddData(
+            ctx: ctx.address,
+            lib: NativeLibrary.path,
+            url: uri,
+            title: track.title,
+            language: track.language,
+          ),
         );
         state = state.copyWith(
           track: state.track.copyWith(
@@ -1326,6 +1327,7 @@ class NativePlayer extends PlatformPlayer {
       return function();
     }
   }
+
 
   /// Takes the snapshot of the current video frame & returns encoded image bytes as [Uint8List].
   ///
@@ -2921,6 +2923,46 @@ Uint8List? _screenshot(_ScreenshotData data) {
   calloc.free(result.cast());
 
   return image;
+}
+
+class _SubAddData {
+  final int ctx;
+  final String lib;
+  final String url;
+  final String? title;
+  final String? language;
+
+  const _SubAddData({
+    required this.ctx,
+    required this.lib,
+    required this.url,
+    this.title,
+    this.language,
+  });
+}
+
+void _subAdd(_SubAddData data) {
+  List<String> args = [
+    'sub-add',
+    data.url,
+    'select',
+    data.title ?? 'external',
+    data.language ?? 'auto',
+  ];
+  final pointers = args.map<Pointer<Utf8>>((e) => e.toNativeUtf8()).toList();
+  final arr = calloc<Pointer<Utf8>>(128);
+  for (int i = 0; i < args.length; i++) {
+    arr.elementAt(i).value = pointers[i];
+  }
+  final mpv = generated.MPV(DynamicLibrary.open(data.lib));
+  final ctx = Pointer<generated.mpv_handle>.fromAddress(data.ctx);
+  mpv.mpv_command_async(
+    ctx,
+    0,
+    arr.cast(),
+  );
+  calloc.free(arr);
+  pointers.forEach(calloc.free);
 }
 
 // --------------------------------------------------
