@@ -1697,6 +1697,8 @@ class NativePlayer extends PlatformPlayer {
               int? rotate;
               double? par;
               int? audiochannels;
+              String? externalfilename;
+              bool? selected;
               for (int j = 0; j < map.num; j++) {
                 final property = map.keys[j].cast<Utf8>().toDartString();
                 if (map.values[j].format ==
@@ -1737,6 +1739,9 @@ class NativePlayer extends PlatformPlayer {
                     case 'albumart':
                       albumart = map.values[j].u.flag > 0;
                       break;
+                  case 'selected':
+                      selected = map.values[j].u.flag > 0;
+                      break;
                   }
                 }
                 if (map.values[j].format ==
@@ -1773,6 +1778,9 @@ class NativePlayer extends PlatformPlayer {
                     case 'demux-channels':
                       channels = value;
                       break;
+                    case 'external-filename':
+                      externalfilename = value;
+                      break;
                   }
                 }
               }
@@ -1797,6 +1805,8 @@ class NativePlayer extends PlatformPlayer {
                       rotate: rotate,
                       par: par,
                       audiochannels: audiochannels,
+                      externalfilename: externalfilename,
+                      selected: selected,
                     ),
                   );
                   break;
@@ -1820,6 +1830,8 @@ class NativePlayer extends PlatformPlayer {
                       rotate: rotate,
                       par: par,
                       audiochannels: audiochannels,
+                      externalfilename: externalfilename,
+                      selected: selected,
                     ),
                   );
                   break;
@@ -1843,6 +1855,8 @@ class NativePlayer extends PlatformPlayer {
                       rotate: rotate,
                       par: par,
                       audiochannels: audiochannels,
+                      externalfilename: externalfilename,
+                      selected: selected,
                     ),
                   );
                   break;
@@ -1862,6 +1876,202 @@ class NativePlayer extends PlatformPlayer {
           }
         }
       }
+
+      if ((prop.ref.name.cast<Utf8>().toDartString() == 'current-tracks/video' ||
+              prop.ref.name.cast<Utf8>().toDartString() == 'current-tracks/audio' ||
+              prop.ref.name.cast<Utf8>().toDartString() == 'current-tracks/sub') &&
+          prop.ref.format == generated.mpv_format.MPV_FORMAT_NODE) {
+        final value = prop.ref.data.cast<generated.mpv_node>();
+        if (value.ref.format == generated.mpv_format.MPV_FORMAT_NODE_MAP) {
+          final map = value.ref.u.list.ref;
+          String id = '';
+          String type = '';
+          String? title;
+          String? language;
+          bool? image;
+          bool? albumart;
+          String? codec;
+          String? decoder;
+          int? w;
+          int? h;
+          int? channelscount;
+          String? channels;
+          int? samplerate;
+          double? fps;
+          int? bitrate;
+          int? rotate;
+          double? par;
+          int? audiochannels;
+          String? externalfilename;
+          bool? selected;
+          for (int i = 0; i < map.num; i++) {
+            final property = map.keys[i].cast<Utf8>().toDartString();
+            if (map.values[i].format == generated.mpv_format.MPV_FORMAT_INT64) {
+              switch (property) {
+                case 'id':
+                  id = map.values[i].u.int64.toString();
+                  break;
+                case 'demux-w':
+                  w = map.values[i].u.int64;
+                  break;
+                case 'demux-h':
+                  h = map.values[i].u.int64;
+                  break;
+                case 'demux-channel-count':
+                  channelscount = map.values[i].u.int64;
+                  break;
+                case 'demux-samplerate':
+                  samplerate = map.values[i].u.int64;
+                  break;
+                case 'demux-bitrate':
+                  bitrate = map.values[i].u.int64;
+                  break;
+                case 'demux-rotate':
+                  rotate = map.values[i].u.int64;
+                  break;
+                case 'audio-channels':
+                  audiochannels = map.values[i].u.int64;
+                  break;
+              }
+            }
+            if (map.values[i].format == generated.mpv_format.MPV_FORMAT_FLAG) {
+              switch (property) {
+                case 'image':
+                  image = map.values[i].u.flag > 0;
+                  break;
+                case 'albumart':
+                  albumart = map.values[i].u.flag > 0;
+                  break;
+                case 'selected':
+                  selected = map.values[i].u.flag > 0;
+                  break;
+              }
+            }
+            if (map.values[i].format == generated.mpv_format.MPV_FORMAT_DOUBLE) {
+              switch (property) {
+                case 'demux-fps':
+                  fps = map.values[i].u.double_;
+                  break;
+                case 'demux-par':
+                  par = map.values[i].u.double_;
+                  break;
+              }
+            }
+            if (map.values[i].format == generated.mpv_format.MPV_FORMAT_STRING) {
+              final value = map.values[i].u.string.cast<Utf8>().toDartString();
+              switch (property) {
+                case 'type':
+                  type = value;
+                  break;
+                case 'title':
+                  title = value;
+                  break;
+                case 'lang':
+                  language = value;
+                  break;
+                case 'codec':
+                  codec = value;
+                  break;
+                case 'decoder-desc':
+                  decoder = value;
+                  break;
+                case 'demux-channels':
+                  channels = value;
+                  break;
+                case 'external-filename':
+                  externalfilename = value;
+                  break;
+              }
+            }
+          }
+          VideoTrack? video;
+          AudioTrack? audio;
+          SubtitleTrack? subtitle;
+          switch (type) {
+            case 'video':
+              video = VideoTrack(
+                id,
+                title,
+                language,
+                image: image,
+                albumart: albumart,
+                codec: codec,
+                decoder: decoder,
+                w: w,
+                h: h,
+                channelscount: channelscount,
+                channels: channels,
+                samplerate: samplerate,
+                fps: fps,
+                bitrate: bitrate,
+                rotate: rotate,
+                par: par,
+                audiochannels: audiochannels,
+                externalfilename: externalfilename,
+                selected: selected,
+              );
+              break;
+            case 'audio':
+              audio = AudioTrack(
+                id,
+                title,
+                language,
+                image: image,
+                albumart: albumart,
+                codec: codec,
+                decoder: decoder,
+                w: w,
+                h: h,
+                channelscount: channelscount,
+                channels: channels,
+                samplerate: samplerate,
+                fps: fps,
+                bitrate: bitrate,
+                rotate: rotate,
+                par: par,
+                audiochannels: audiochannels,
+                externalfilename: externalfilename,
+                selected: selected,
+              );
+              break;
+            case 'sub':
+              subtitle = SubtitleTrack(
+                id,
+                title,
+                language,
+                image: image,
+                albumart: albumart,
+                codec: codec,
+                decoder: decoder,
+                w: w,
+                h: h,
+                channelscount: channelscount,
+                channels: channels,
+                samplerate: samplerate,
+                fps: fps,
+                bitrate: bitrate,
+                rotate: rotate,
+                par: par,
+                audiochannels: audiochannels,
+                externalfilename: externalfilename,
+                selected: selected,
+              );
+              break;
+          }
+          state = state.copyWith(
+            track: state.track.copyWith(
+              video: video,
+              audio: audio,
+              subtitle: subtitle,
+            ),
+          );
+
+          if (!trackController.isClosed) {
+            trackController.add(state.track);
+          }
+        }
+      }
+
       if (prop.ref.name.cast<Utf8>().toDartString() == 'sub-text' &&
           prop.ref.format == generated.mpv_format.MPV_FORMAT_NODE) {
         final value = prop.ref.data.cast<generated.mpv_node>();
@@ -2426,6 +2636,9 @@ class NativePlayer extends PlatformPlayer {
         'audio-device-list': generated.mpv_format.MPV_FORMAT_NODE,
         'video-out-params': generated.mpv_format.MPV_FORMAT_NODE,
         'track-list': generated.mpv_format.MPV_FORMAT_NODE,
+        'current-tracks/video': generated.mpv_format.MPV_FORMAT_NODE,
+        'current-tracks/audio': generated.mpv_format.MPV_FORMAT_NODE,
+        'current-tracks/sub': generated.mpv_format.MPV_FORMAT_NODE,
         'eof-reached': generated.mpv_format.MPV_FORMAT_FLAG,
         'idle-active': generated.mpv_format.MPV_FORMAT_FLAG,
         'sub-text': generated.mpv_format.MPV_FORMAT_NODE,

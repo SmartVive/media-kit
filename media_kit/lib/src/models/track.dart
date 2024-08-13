@@ -33,6 +33,8 @@ abstract class _Track {
   final int? rotate; /* demux-rotate */
   final double? par; /* demux-par */
   final int? audiochannels; /* audio-channels */
+  final String? externalfilename;
+  final bool? selected;
   // ----------------------------------------
 
   /// {@macro _track}
@@ -54,6 +56,8 @@ abstract class _Track {
     this.rotate,
     this.par,
     this.audiochannels,
+    this.externalfilename,
+    this.selected,
   });
 
   @override
@@ -91,7 +95,9 @@ abstract class _Track {
       'bitrate: $bitrate, '
       'rotate: $rotate, '
       'par: $par, '
-      'audiochannels: $audiochannels'
+      'audiochannels: $audiochannels, '
+      'externalfilename: $externalfilename, '
+      'selected: $selected'
       ')';
 }
 
@@ -123,6 +129,8 @@ class VideoTrack extends _Track {
     super.rotate,
     super.par,
     super.audiochannels,
+    super.externalfilename,
+    super.selected,
   });
 
   /// No video track. Disables video output.
@@ -163,6 +171,8 @@ class AudioTrack extends _Track {
     super.rotate,
     super.par,
     super.audiochannels,
+    super.externalfilename,
+    super.selected,
     this.uri = false,
   });
 
@@ -186,6 +196,7 @@ class AudioTrack extends _Track {
         uri,
         title,
         language,
+        externalfilename: uri,
         uri: true,
       );
 
@@ -238,6 +249,8 @@ class SubtitleTrack extends _Track {
     super.rotate,
     super.par,
     super.audiochannels,
+    super.selected,
+    super.externalfilename,
     this.uri = false,
     this.data = false,
   });
@@ -258,7 +271,7 @@ class SubtitleTrack extends _Track {
     String? title,
     String? language,
   }) =>
-      SubtitleTrack(uri, title, language, uri: true);
+      SubtitleTrack(uri, title, language, externalfilename: uri, uri: true);
 
   /// [SubtitleTrack] loaded with data.
   ///
