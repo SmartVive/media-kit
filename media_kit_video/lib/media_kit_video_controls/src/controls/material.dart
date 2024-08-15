@@ -1964,7 +1964,7 @@ class MaterialCustomButton extends StatelessWidget {
   final Color? iconColor;
 
   /// The callback that is called when the button is tapped or otherwise activated.
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
 
   const MaterialCustomButton({
     Key? key,
