@@ -2477,6 +2477,20 @@ class NativePlayer extends PlatformPlayer {
           prop.ref.id,
         );
       }
+      if (prop.ref.name.cast<Utf8>().toDartString() == 'on_load_fail') {
+        for (final hook in onLoadFailHooks) {
+          try {
+            await hook.call();
+          } catch (exception, stacktrace) {
+            print(exception);
+            print(stacktrace);
+          }
+        }
+        mpv.mpv_hook_continue(
+          ctx,
+          prop.ref.id,
+        );
+      }
     }
   }
 
@@ -2675,8 +2689,10 @@ class NativePlayer extends PlatformPlayer {
       // Add libmpv hooks for supporting custom HTTP headers in [Media].
       final load = 'on_load'.toNativeUtf8();
       final unload = 'on_unload'.toNativeUtf8();
+      final loadFail = 'on_load_fail'.toNativeUtf8();
       mpv.mpv_hook_add(ctx, 0, load.cast(), 0);
       mpv.mpv_hook_add(ctx, 0, unload.cast(), 0);
+      mpv.mpv_hook_add(ctx, 0, loadFail.cast(), 0);
       calloc.free(load);
       calloc.free(unload);
 
@@ -2847,6 +2863,8 @@ class NativePlayer extends PlatformPlayer {
 
   /// The methods which must execute synchronously before playback of a source can end.
   final List<Future<void> Function()> onUnloadHooks = [];
+
+  final List<Future<void> Function()> onLoadFailHooks = [];
 
   /// Synchronization & mutual exclusion between methods of this class.
   static final Lock lock = Lock();
