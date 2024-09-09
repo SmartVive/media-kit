@@ -531,7 +531,7 @@ class _MaterialVideoControlsState extends State<_MaterialVideoControls> {
 
   Offset _dragInitialDelta =
       Offset.zero; // Initial position for horizontal drag
-  int swipeDuration = 0; // Duration to seek in video
+  Duration _dragInitialPosition = Duration.zero;
   bool showSwipeDuration = false; // Whether to show the seek duration overlay
 
   bool _speedUpIndicator = false;
@@ -545,7 +545,7 @@ class _MaterialVideoControlsState extends State<_MaterialVideoControls> {
   Timer? _timerSeekBackwardButton;
   Timer? _timerSeekForwardButton;
 
-  final ValueNotifier<Duration> _seekBarDeltaValueNotifier =
+  final ValueNotifier<Duration> _seekBarSwipeDurationValueNotifier =
       ValueNotifier<Duration>(Duration.zero);
 
   final List<StreamSubscription> subscriptions = [];
@@ -705,41 +705,52 @@ class _MaterialVideoControlsState extends State<_MaterialVideoControls> {
   void onHorizontalDragUpdate(DragUpdateDetails details) {
     if (_dragInitialDelta == Offset.zero) {
       _dragInitialDelta = details.localPosition;
+      _dragInitialPosition = controller(context).player.state.position;
       return;
     }
 
     final diff = _dragInitialDelta.dx - details.localPosition.dx;
-    final duration = controller(context).player.state.duration.inSeconds;
-    final position = controller(context).player.state.position.inSeconds;
+    final duration = controller(context).player.state.duration;
 
     final seconds =
-        -(diff * duration / _theme(context).horizontalGestureSensitivity)
+        -(diff * duration.inSeconds / _theme(context).horizontalGestureSensitivity)
             .round();
-    final relativePosition = position + seconds;
+    final relativePosition = (_dragInitialPosition + Duration(seconds: seconds)).clamp(Duration.zero, duration);
 
-    if (relativePosition <= duration && relativePosition >= 0) {
+    setState(() {
+      showSwipeDuration = true;
+      _seekBarSwipeDurationValueNotifier.value = relativePosition;
+    });
+    if (!visible) {
       setState(() {
-        swipeDuration = seconds;
-        showSwipeDuration = true;
-        _seekBarDeltaValueNotifier.value = Duration(seconds: seconds);
+        mount = true;
+        visible = true;
       });
+      shiftSubtitle();
     }
+    _timer?.cancel();
   }
 
   void onHorizontalDragEnd() {
-    if (swipeDuration != 0) {
-      Duration newPosition = controller(context).player.state.position +
-          Duration(seconds: swipeDuration);
-      newPosition = newPosition.clamp(
-        Duration.zero,
-        controller(context).player.state.duration,
-      );
-      controller(context).player.seek(newPosition);
-    }
+    controller(context).player.seek(_seekBarSwipeDurationValueNotifier.value);
 
-    setState(() {
-      _dragInitialDelta = Offset.zero;
-      showSwipeDuration = false;
+    //添加延迟防止抖动
+    Timer(const Duration(milliseconds: 200),() {
+      setState(() {
+        _dragInitialDelta = Offset.zero;
+        showSwipeDuration = false;
+      });
+      _timer = Timer(
+        _theme(context).controlsHoverDuration,
+            () {
+          if (mounted) {
+            setState(() {
+              visible = false;
+            });
+            unshiftSubtitle();
+          }
+        },
+      );
     });
   }
 
@@ -980,7 +991,12 @@ class _MaterialVideoControlsState extends State<_MaterialVideoControls> {
                             }
                           },
                           onHorizontalDragEnd: (details) {
-                            onHorizontalDragEnd();
+                            if ((!mount && _theme(context).seekGesture) ||
+                            (_theme(context).seekGesture &&
+                            _theme(context)
+                                .gesturesEnabledWhileControlsVisible)) {
+                              onHorizontalDragEnd();
+                            }
                           },
                           onVerticalDragUpdate: (e) async {
                             final delta = e.delta.dy;
@@ -1067,8 +1083,11 @@ class _MaterialVideoControlsState extends State<_MaterialVideoControls> {
                             Stack(
                               alignment: Alignment.bottomCenter,
                               children: [
-                                if (_theme(context).displaySeekBar)
-                                  MaterialSeekBar(
+                                if (_theme(context).displaySeekBar &&
+                                    !_mountSeekBackwardButton &&
+                                    !_mountSeekForwardButton &&
+                                    !showSwipeDuration)
+                                  MaterialPositionSeekBar(
                                     onSeekStart: () {
                                       _timer?.cancel();
                                     },
@@ -1107,19 +1126,25 @@ class _MaterialVideoControlsState extends State<_MaterialVideoControls> {
                 ),
               ),
               // Double-Tap Seek Seek-Bar:
-              if (!mount)
-                if (_mountSeekBackwardButton ||
-                    _mountSeekForwardButton ||
-                    showSwipeDuration)
-                  Column(
+              if (_mountSeekBackwardButton ||
+                  _mountSeekForwardButton ||
+                  showSwipeDuration)
+                Padding(
+                  padding: _theme(context).padding ??
+                      (
+                          // Add padding in fullscreen!
+                          isFullscreen(context)
+                              ? MediaQuery.of(context).padding
+                              : EdgeInsets.zero),
+                  child: Column(
                     children: [
                       const Spacer(),
                       Stack(
                         alignment: Alignment.bottomCenter,
                         children: [
                           if (_theme(context).displaySeekBar)
-                            MaterialSeekBar(
-                              delta: _seekBarDeltaValueNotifier,
+                            MaterialPositionSeekBar(
+                              seekToDuration: _seekBarSwipeDurationValueNotifier,
                             ),
                           Container(
                             height: _theme(context).buttonBarHeight,
@@ -1129,6 +1154,7 @@ class _MaterialVideoControlsState extends State<_MaterialVideoControls> {
                       ),
                     ],
                   ),
+                ),
               // Buffering Indicator.
               IgnorePointer(
                 child: Padding(
@@ -1378,19 +1404,15 @@ class _MaterialVideoControlsState extends State<_MaterialVideoControls> {
                   opacity: showSwipeDuration ? 1 : 0,
                   child: _theme(context)
                           .seekIndicatorBuilder
-                          ?.call(context, Duration(seconds: swipeDuration)) ??
+                          ?.call(context, _seekBarSwipeDurationValueNotifier.value) ??
                       Container(
-                        alignment: Alignment.center,
+                        padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
                           color: const Color(0x88000000),
                           borderRadius: BorderRadius.circular(64.0),
                         ),
-                        height: 52.0,
-                        width: 108.0,
                         child: Text(
-                          swipeDuration > 0
-                              ? "+ ${Duration(seconds: swipeDuration).label()}"
-                              : "- ${Duration(seconds: swipeDuration).label()}",
+                          "${_seekBarSwipeDurationValueNotifier.value.label(reference: controller(context).player.state.duration)} / ${controller(context).player.state.duration.label()}",
                           textAlign: TextAlign.center,
                           style: const TextStyle(
                             fontSize: 14.0,
@@ -1418,7 +1440,8 @@ class _MaterialVideoControlsState extends State<_MaterialVideoControls> {
                                     duration: _theme(context)
                                         .seekOnDoubleTapBackwardDuration,
                                     onChanged: (value) {
-                                      _seekBarDeltaValueNotifier.value = -value;
+                                      _seekBarSwipeDurationValueNotifier.value =
+                                          controller(context).player.state.position - value;
                                     },
                                     onSubmitted: (value) {
                                       _timerSeekBackwardButton?.cancel();
@@ -1472,7 +1495,8 @@ class _MaterialVideoControlsState extends State<_MaterialVideoControls> {
                                     duration: _theme(context)
                                         .seekOnDoubleTapForwardDuration,
                                     onChanged: (value) {
-                                      _seekBarDeltaValueNotifier.value = value;
+                                      _seekBarSwipeDurationValueNotifier.value =
+                                          controller(context).player.state.position + value;
                                     },
                                     onSubmitted: (value) {
                                       _timerSeekForwardButton?.cancel();
@@ -1581,11 +1605,6 @@ class MaterialSeekBarState extends State<MaterialSeekBar> {
           controller(context).player.stream.playing.listen((event) {
             setState(() {
               playing = event;
-            });
-          }),
-          controller(context).player.stream.completed.listen((event) {
-            setState(() {
-              position = Duration.zero;
             });
           }),
           controller(context).player.stream.position.listen((event) {
@@ -1764,6 +1783,272 @@ class MaterialSeekBarState extends State<MaterialSeekBar> {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class MaterialPositionSeekBar extends StatefulWidget {
+  final ValueNotifier<Duration>? seekToDuration;
+  final VoidCallback? onSeekStart;
+  final VoidCallback? onSeekEnd;
+
+  const MaterialPositionSeekBar({
+    Key? key,
+    this.seekToDuration,
+    this.onSeekStart,
+    this.onSeekEnd,
+  }) : super(key: key);
+
+  @override
+  MaterialPositionSeekBarState createState() => MaterialPositionSeekBarState();
+}
+
+class MaterialPositionSeekBarState extends State<MaterialPositionSeekBar> {
+  bool tapped = false;
+  double slider = 0.0;
+
+  late bool playing = controller(context).player.state.playing;
+  late Duration position = controller(context).player.state.position;
+  late Duration duration = controller(context).player.state.duration;
+  late Duration buffer = controller(context).player.state.buffer;
+
+  final List<StreamSubscription> subscriptions = [];
+
+  @override
+  void setState(VoidCallback fn) {
+    if (mounted) {
+      super.setState(fn);
+    }
+  }
+
+  void listener() {
+    setState(() {
+      final seekToDuration = widget.seekToDuration?.value;
+      if (seekToDuration != null) {
+        position = seekToDuration;
+      }
+    });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    widget.seekToDuration?.addListener(listener);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (subscriptions.isEmpty && widget.seekToDuration == null) {
+      subscriptions.addAll(
+        [
+          controller(context).player.stream.playing.listen((event) {
+            setState(() {
+              playing = event;
+            });
+          }),
+          controller(context).player.stream.position.listen((event) {
+            setState(() {
+              if (!tapped) {
+                position = event;
+              }
+            });
+          }),
+          controller(context).player.stream.duration.listen((event) {
+            setState(() {
+              duration = event;
+            });
+          }),
+          controller(context).player.stream.buffer.listen((event) {
+            setState(() {
+              buffer = event;
+            });
+          }),
+        ],
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.seekToDuration?.removeListener(listener);
+    for (final subscription in subscriptions) {
+      subscription.cancel();
+    }
+    super.dispose();
+  }
+
+  void onPointerMove(PointerMoveEvent e, BoxConstraints constraints) {
+    final percent = e.localPosition.dx / constraints.maxWidth;
+    setState(() {
+      tapped = true;
+      slider = percent.clamp(0.0, 1.0);
+    });
+  }
+
+  void onPointerDown() {
+    widget.onSeekStart?.call();
+    setState(() {
+      tapped = true;
+    });
+  }
+
+  void onPointerUp() {
+    widget.onSeekEnd?.call();
+    setState(() {
+      tapped = false;
+    });
+    controller(context).player.seek(duration * slider);
+    setState(() {
+      // Explicitly set the position to prevent the slider from jumping.
+      position = duration * slider;
+    });
+  }
+
+  void onPanStart(DragStartDetails e, BoxConstraints constraints) {
+    final percent = e.localPosition.dx / constraints.maxWidth;
+    setState(() {
+      tapped = true;
+      slider = percent.clamp(0.0, 1.0);
+    });
+  }
+
+  void onPanDown(DragDownDetails e, BoxConstraints constraints) {
+    final percent = e.localPosition.dx / constraints.maxWidth;
+    setState(() {
+      tapped = true;
+      slider = percent.clamp(0.0, 1.0);
+    });
+  }
+
+  void onPanUpdate(DragUpdateDetails e, BoxConstraints constraints) {
+    final percent = e.localPosition.dx / constraints.maxWidth;
+    setState(() {
+      tapped = true;
+      slider = percent.clamp(0.0, 1.0);
+    });
+  }
+
+  /// Returns the current playback position in percentage.
+  double get positionPercent {
+    if (position == Duration.zero || duration == Duration.zero) {
+      return 0.0;
+    } else {
+      final value = position.inMilliseconds / duration.inMilliseconds;
+      return value.clamp(0.0, 1.0);
+    }
+  }
+
+  /// Returns the current playback buffer position in percentage.
+  double get bufferPercent {
+    if (buffer == Duration.zero || duration == Duration.zero) {
+      return 0.0;
+    } else {
+      final value = buffer.inMilliseconds / duration.inMilliseconds;
+      return value.clamp(0.0, 1.0);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: _theme(context).seekBarContainerHeight,
+      clipBehavior: Clip.none,
+      margin: _theme(context).seekBarMargin,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisAlignment: MainAxisAlignment.start,
+        children: [
+          Container(
+            width: 96,
+            alignment: Alignment.centerLeft,
+            child: FittedBox(
+              child: Text(
+                '${(tapped ? duration * slider : position).label(reference: duration)} / ${duration.label(reference: duration)}',
+                style: TextStyle(
+                  height: 1.0,
+                  fontSize: 12.0,
+                  color: _theme(context).buttonBarButtonColor,
+                ),
+                maxLines: 1,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: LayoutBuilder(
+              builder: (context, constraints) => MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: GestureDetector(
+                  onHorizontalDragUpdate: (_) {},
+                  onPanStart: (e) => onPanStart(e, constraints),
+                  onPanDown: (e) => onPanDown(e, constraints),
+                  onPanUpdate: (e) => onPanUpdate(e, constraints),
+                  child: Listener(
+                    onPointerMove: (e) => onPointerMove(e, constraints),
+                    onPointerDown: (e) => onPointerDown(),
+                    onPointerUp: (e) => onPointerUp(),
+                    child: Container(
+                      color: Colors.transparent,
+                      width: constraints.maxWidth,
+                      alignment: Alignment.center,
+                      child: Stack(
+                        clipBehavior: Clip.none,
+                        alignment: Alignment.bottomCenter,
+                        children: [
+                          Container(
+                            width: constraints.maxWidth,
+                            height: _theme(context).seekBarHeight,
+                            alignment: Alignment.bottomLeft,
+                            color: _theme(context).seekBarColor,
+                            child: Stack(
+                              clipBehavior: Clip.none,
+                              alignment: Alignment.bottomLeft,
+                              children: [
+                                Container(
+                                  width: constraints.maxWidth * bufferPercent,
+                                  color: _theme(context).seekBarBufferColor,
+                                ),
+                                Container(
+                                  width: tapped
+                                      ? constraints.maxWidth * slider
+                                      : constraints.maxWidth * positionPercent,
+                                  color: _theme(context).seekBarPositionColor,
+                                ),
+                              ],
+                            ),
+                          ),
+                          Positioned(
+                            left: tapped
+                                ? (constraints.maxWidth -
+                                _theme(context).seekBarThumbSize / 2) *
+                                slider
+                                : (constraints.maxWidth -
+                                _theme(context).seekBarThumbSize / 2) *
+                                positionPercent,
+                            bottom: -1.0 * _theme(context).seekBarThumbSize / 2 +
+                                _theme(context).seekBarHeight / 2,
+                            child: Container(
+                              width: _theme(context).seekBarThumbSize,
+                              height: _theme(context).seekBarThumbSize,
+                              decoration: BoxDecoration(
+                                color: _theme(context).seekBarThumbColor,
+                                borderRadius: BorderRadius.circular(
+                                  _theme(context).seekBarThumbSize / 2,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
