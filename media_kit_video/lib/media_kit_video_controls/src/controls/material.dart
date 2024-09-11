@@ -975,6 +975,23 @@ class _MaterialVideoControlsState extends State<_MaterialVideoControls> {
                               ),
                       ),
                     ),
+                    Positioned.fill(
+                      child: Listener(
+                        behavior: HitTestBehavior.translucent,
+                        onPointerDown: (event) {
+                          _timer?.cancel();
+                          _timer = Timer(_theme(context).controlsHoverDuration, () {
+                            if (mounted) {
+                              setState(() {
+                                visible = false;
+                              });
+                              unshiftSubtitle();
+                            }
+                          });
+                        },
+                        child: const SizedBox.expand(),
+                      ),
+                    ),
                   ] : [
                     Positioned.fill(
                       child: Container(
@@ -1186,6 +1203,23 @@ class _MaterialVideoControlsState extends State<_MaterialVideoControls> {
                           ),
                         ),
                       ),
+                    ),
+                    Positioned.fill(
+                        child: Listener(
+                          behavior: HitTestBehavior.translucent,
+                          onPointerDown: (event) {
+                            _timer?.cancel();
+                            _timer = Timer(_theme(context).controlsHoverDuration, () {
+                              if (mounted) {
+                                setState(() {
+                                  visible = false;
+                                });
+                                unshiftSubtitle();
+                              }
+                            });
+                          },
+                          child: const SizedBox.expand(),
+                        ),
                     ),
                   ],
                 ),
