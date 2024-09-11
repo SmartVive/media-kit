@@ -558,6 +558,8 @@ class _MaterialVideoControlsState extends State<_MaterialVideoControls> {
           : 0.0);
   Offset? _tapPosition;
 
+  bool lock = false;
+
   void _handleDoubleTapDown(TapDownDetails details) {
     setState(() {
       _tapPosition = details.localPosition;
@@ -930,7 +932,38 @@ class _MaterialVideoControlsState extends State<_MaterialVideoControls> {
                 child: Stack(
                   clipBehavior: Clip.none,
                   alignment: Alignment.center,
-                  children: [
+                  children: lock ? [
+                    Positioned.fill(
+                      child: Container(
+                        color: _theme(context).backdropColor,
+                      ),
+                    ),
+                    Positioned.fill(
+                      child: GestureDetector(
+                        onTap: onTap,
+                        child: Container(color: Colors.transparent),
+                      ),
+                    ),
+                    IgnorePointer(
+                      ignoring: !mount,
+                      child: Container(
+                        padding: _theme(context).padding ??
+                            (
+                                // Add padding in fullscreen!
+                                isFullscreen(context)
+                                    ? MediaQuery.of(context).padding
+                                    : EdgeInsets.zero),
+                        alignment: Alignment.centerLeft,
+                        child: IconButton(
+                          iconSize: 28,
+                          onPressed: () => setState(() {
+                            lock = !lock;
+                          }),
+                          icon: Icon(lock ? Icons.lock_outlined : Icons.lock_open_outlined),
+                        ),
+                      ),
+                    ),
+                  ] : [
                     Positioned.fill(
                       child: Container(
                         color: _theme(context).backdropColor,
@@ -1113,7 +1146,26 @@ class _MaterialVideoControlsState extends State<_MaterialVideoControls> {
                           ],
                         ),
                       ),
-                    )
+                    ),
+                    IgnorePointer(
+                      ignoring: !mount,
+                      child: Container(
+                        padding: _theme(context).padding ??
+                            (
+                                // Add padding in fullscreen!
+                                isFullscreen(context)
+                                    ? MediaQuery.of(context).padding
+                                    : EdgeInsets.zero),
+                        alignment: Alignment.centerLeft,
+                        child: IconButton(
+                          iconSize: 28,
+                          onPressed: () => setState(() {
+                            lock = !lock;
+                          }),
+                          icon: Icon(lock ? Icons.lock_outlined : Icons.lock_open_outlined),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
