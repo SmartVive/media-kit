@@ -249,6 +249,8 @@ class MaterialVideoControlsThemeData {
   /// Color of the button bar buttons.
   final Color buttonBarButtonColor;
 
+  final EdgeInsets lockMargin;
+
   // SEEK BAR
 
   /// Margin around the seek bar.
@@ -334,6 +336,7 @@ class MaterialVideoControlsThemeData {
     this.buttonBarHeight = 56.0,
     this.buttonBarButtonSize = 24.0,
     this.buttonBarButtonColor = const Color(0xFFFFFFFF),
+    this.lockMargin = EdgeInsets.zero,
     this.seekBarMargin = EdgeInsets.zero,
     this.seekBarHeight = 2.4,
     this.seekBarContainerHeight = 36.0,
@@ -384,6 +387,7 @@ class MaterialVideoControlsThemeData {
     double? buttonBarHeight,
     double? buttonBarButtonSize,
     Color? buttonBarButtonColor,
+    EdgeInsets? lockMargin,
     EdgeInsets? seekBarMargin,
     double? seekBarHeight,
     double? seekBarContainerHeight,
@@ -453,6 +457,7 @@ class MaterialVideoControlsThemeData {
       buttonBarHeight: buttonBarHeight ?? this.buttonBarHeight,
       buttonBarButtonSize: buttonBarButtonSize ?? this.buttonBarButtonSize,
       buttonBarButtonColor: buttonBarButtonColor ?? this.buttonBarButtonColor,
+      lockMargin: lockMargin ?? this.lockMargin,
       seekBarMargin: seekBarMargin ?? this.seekBarMargin,
       seekBarHeight: seekBarHeight ?? this.seekBarHeight,
       seekBarContainerHeight:
@@ -557,6 +562,8 @@ class _MaterialVideoControlsState extends State<_MaterialVideoControls> {
           ? _theme(context).buttonBarHeight
           : 0.0);
   Offset? _tapPosition;
+
+  bool lock = false;
 
   void _handleDoubleTapDown(TapDownDetails details) {
     setState(() {
@@ -933,7 +940,42 @@ class _MaterialVideoControlsState extends State<_MaterialVideoControls> {
                 child: Stack(
                   clipBehavior: Clip.none,
                   alignment: Alignment.center,
-                  children: [
+                  children: lock ? [
+                    Positioned.fill(
+                      child: Container(
+                        color: _theme(context).backdropColor,
+                      ),
+                    ),
+                    Positioned.fill(
+                      child: GestureDetector(
+                        onTap: onTap,
+                        child: Container(color: Colors.transparent),
+                      ),
+                    ),
+                    IgnorePointer(
+                      ignoring: !mount,
+                      child: Container(
+                        padding: _theme(context).padding ??
+                            (
+                                // Add padding in fullscreen!
+                                isFullscreen(context)
+                                    ? MediaQuery.of(context).padding
+                                    : EdgeInsets.zero),
+                        margin: _theme(context).lockMargin,
+                        alignment: Alignment.centerLeft,
+                        child: IconButton(
+                          iconSize: 28,
+                          onPressed: () => setState(() {
+                            lock = !lock;
+                          }),
+                                icon: Icon(
+                                  lock ? Icons.lock_outlined : Icons.lock_open_outlined,
+                                  color: const Color(0xFFFFFFFF),
+                                ),
+                              ),
+                      ),
+                    ),
+                  ] : [
                     Positioned.fill(
                       child: Container(
                         color: _theme(context).backdropColor,
@@ -1121,7 +1163,30 @@ class _MaterialVideoControlsState extends State<_MaterialVideoControls> {
                           ],
                         ),
                       ),
-                    )
+                    ),
+                    IgnorePointer(
+                      ignoring: !mount,
+                      child: Container(
+                        padding: _theme(context).padding ??
+                            (
+                                // Add padding in fullscreen!
+                                isFullscreen(context)
+                                    ? MediaQuery.of(context).padding
+                                    : EdgeInsets.zero),
+                        margin: _theme(context).lockMargin,
+                        alignment: Alignment.centerLeft,
+                        child: IconButton(
+                          iconSize: 28,
+                          onPressed: () => setState(() {
+                            lock = !lock;
+                          }),
+                          icon: Icon(
+                            lock ? Icons.lock_outlined : Icons.lock_open_outlined,
+                            color: const Color(0xFFFFFFFF),
+                          ),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
