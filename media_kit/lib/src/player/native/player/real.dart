@@ -1208,13 +1208,18 @@ class NativePlayer extends PlatformPlayer {
       } else {
         final name = 'aid'.toNativeUtf8();
         final value = track.id.toNativeUtf8();
-        mpv.mpv_set_property_string(
+        final ptr = calloc<Pointer<Void>>(1);
+        ptr.value = Pointer.fromAddress(value.address);
+        mpv.mpv_set_property_async(
           ctx,
+          0,
           name.cast(),
-          value.cast(),
+          generated.mpv_format.MPV_FORMAT_STRING,
+          ptr.cast(),
         );
         calloc.free(name);
         calloc.free(value);
+        calloc.free(ptr);
         state = state.copyWith(
           track: state.track.copyWith(
             audio: track,
@@ -1303,13 +1308,18 @@ class NativePlayer extends PlatformPlayer {
       } else {
         final name = 'sid'.toNativeUtf8();
         final value = track.id.toNativeUtf8();
-        mpv.mpv_set_property_string(
+        final ptr = calloc<Pointer<Void>>(1);
+        ptr.value = Pointer.fromAddress(value.address);
+        mpv.mpv_set_property_async(
           ctx,
+          0,
           name.cast(),
-          value.cast(),
+          generated.mpv_format.MPV_FORMAT_STRING,
+          ptr.cast(),
         );
         calloc.free(name);
         calloc.free(value);
+        calloc.free(ptr);
         state = state.copyWith(
           track: state.track.copyWith(
             subtitle: track,
