@@ -168,6 +168,12 @@ class MaterialVideoControlsThemeData {
   /// giving more or less space to each one based on the specified ratios.
   final List<int> seekOnDoubleTapLayoutWidgetRatios;
 
+  /// Duration of seek forward.
+  final Duration seekForwardDuration;
+
+  /// Duration of seek backward.
+  final Duration seekBackwardDuration;
+
   /// Whether the controls are initially visible.
   final bool visibleOnMount;
 
@@ -297,6 +303,8 @@ class MaterialVideoControlsThemeData {
     this.speedUpFactor = 2.0,
     this.verticalGestureSensitivity = 100,
     this.horizontalGestureSensitivity = 1000,
+    this.seekForwardDuration = const Duration(seconds: 10),
+    this.seekBackwardDuration = const Duration(seconds: 10),
     this.backdropColor = const Color(0x66000000),
     this.padding,
     this.controlsHoverDuration = const Duration(seconds: 3),
@@ -353,6 +361,8 @@ class MaterialVideoControlsThemeData {
     bool? seekOnDoubleTapEnabledWhileControlsVisible,
     List<int>? seekOnDoubleTapLayoutTapsRatios,
     List<int>? seekOnDoubleTapLayoutWidgetRatios,
+    Duration? seekForwardDuration,
+    Duration? seekBackwardDuration,
     bool? visibleOnMount,
     bool? speedUpOnLongPress,
     double? speedUpFactor,
@@ -409,6 +419,8 @@ class MaterialVideoControlsThemeData {
           this.seekOnDoubleTapLayoutTapsRatios,
       seekOnDoubleTapLayoutWidgetRatios: seekOnDoubleTapLayoutWidgetRatios ??
           this.seekOnDoubleTapLayoutWidgetRatios,
+      seekForwardDuration: seekForwardDuration ?? this.seekForwardDuration,
+      seekBackwardDuration: seekBackwardDuration ?? this.seekBackwardDuration,
       visibleOnMount: visibleOnMount ?? this.visibleOnMount,
       speedUpOnLongPress: speedUpOnLongPress ?? this.speedUpOnLongPress,
       speedUpFactor: speedUpFactor ?? this.speedUpFactor,
@@ -1501,6 +1513,7 @@ class _MaterialVideoControlsState extends State<_MaterialVideoControls> {
                                   opacity: _hideSeekBackwardButton ? 0 : 1.0,
                                   duration: const Duration(milliseconds: 200),
                                   child: _BackwardSeekIndicator(
+                                    value: _theme(context).seekBackwardDuration,
                                     onChanged: (value) {
                                       _seekBarSwipeDurationValueNotifier.value =
                                           controller(context).player.state.position - value;
@@ -1554,6 +1567,7 @@ class _MaterialVideoControlsState extends State<_MaterialVideoControls> {
                                   opacity: _hideSeekForwardButton ? 0 : 1.0,
                                   duration: const Duration(milliseconds: 200),
                                   child: _ForwardSeekIndicator(
+                                    value: _theme(context).seekForwardDuration,
                                     onChanged: (value) {
                                       _seekBarSwipeDurationValueNotifier.value =
                                           controller(context).player.state.position + value;
@@ -2401,10 +2415,12 @@ class MaterialPositionIndicatorState extends State<MaterialPositionIndicator> {
 }
 
 class _BackwardSeekIndicator extends StatefulWidget {
+  final Duration value;
   final void Function(Duration) onChanged;
   final void Function(Duration) onSubmitted;
   const _BackwardSeekIndicator({
     Key? key,
+    required this.value,
     required this.onChanged,
     required this.onSubmitted,
   }) : super(key: key);
@@ -2414,7 +2430,7 @@ class _BackwardSeekIndicator extends StatefulWidget {
 }
 
 class _BackwardSeekIndicatorState extends State<_BackwardSeekIndicator> {
-  Duration value = const Duration(seconds: 10);
+  late Duration value = widget.value;
 
   Timer? timer;
 
@@ -2488,10 +2504,12 @@ class _BackwardSeekIndicatorState extends State<_BackwardSeekIndicator> {
 }
 
 class _ForwardSeekIndicator extends StatefulWidget {
+  final Duration value;
   final void Function(Duration) onChanged;
   final void Function(Duration) onSubmitted;
   const _ForwardSeekIndicator({
     Key? key,
+    required this.value,
     required this.onChanged,
     required this.onSubmitted,
   }) : super(key: key);
@@ -2501,7 +2519,7 @@ class _ForwardSeekIndicator extends StatefulWidget {
 }
 
 class _ForwardSeekIndicatorState extends State<_ForwardSeekIndicator> {
-  Duration value = const Duration(seconds: 10);
+  late Duration value = widget.value;
 
   Timer? timer;
 
