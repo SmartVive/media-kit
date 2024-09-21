@@ -3,6 +3,8 @@
 /// Copyright © 2021 & onwards, Hitesh Kumar Saini <saini123hitesh@gmail.com>.
 /// All rights reserved.
 /// Use of this source code is governed by MIT license that can be found in the LICENSE file.
+import 'dart:async';
+
 import 'package:flutter/widgets.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:media_kit_video/src/utils/dispose_safe_notifer.dart';
@@ -31,3 +33,6 @@ Future<void> Function()? onEnterFullscreen(BuildContext context) =>
 /// Returns the callback which must be invoked when the video exits fullscreen mode.
 Future<void> Function()? onExitFullscreen(BuildContext context) =>
     VideoStateInheritedWidget.of(context).state.widget.onExitFullscreen;
+
+void Function(dynamic)? onPopFullscreen(BuildContext context) =>
+    VideoStateInheritedWidget.of(context).state.widget.onPopFullscreen;
