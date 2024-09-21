@@ -80,7 +80,9 @@ Future<void> enterFullscreen(BuildContext context) {
             transitionDuration: Duration.zero,
             reverseTransitionDuration: Duration.zero,
           ),
-        );
+        ).then((value) {
+          onPopFullscreen(context)?.call(value);
+        });
         await onEnterFullscreen(context)?.call();
       }
     }
