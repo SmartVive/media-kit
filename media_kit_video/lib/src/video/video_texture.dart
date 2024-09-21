@@ -113,6 +113,8 @@ class Video extends StatefulWidget {
   /// The callback invoked when the [Video] exits fullscreen.
   final Future<void> Function() onExitFullscreen;
 
+  final void Function(dynamic value)? onPopFullscreen;
+
   /// {@macro video}
   const Video({
     Key? key,
@@ -131,6 +133,7 @@ class Video extends StatefulWidget {
     this.subtitleViewConfiguration = const SubtitleViewConfiguration(),
     this.onEnterFullscreen = defaultEnterNativeFullscreen,
     this.onExitFullscreen = defaultExitNativeFullscreen,
+    this.onPopFullscreen,
   }) : super(key: key);
 
   @override
