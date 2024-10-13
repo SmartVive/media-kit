@@ -2137,7 +2137,7 @@ class NativePlayer extends PlatformPlayer {
           }
         }
       }
-      if (prop.ref.name.cast<Utf8>().toDartString() == 'video-out-params' &&
+      if (prop.ref.name.cast<Utf8>().toDartString() == 'video-params' &&
           prop.ref.format == generated.mpv_format.MPV_FORMAT_NODE) {
         final node = prop.ref.data.cast<generated.mpv_node>().ref;
         final data = <String, dynamic>{};
@@ -2648,7 +2648,7 @@ class NativePlayer extends PlatformPlayer {
         'audio-bitrate': generated.mpv_format.MPV_FORMAT_DOUBLE,
         'audio-device': generated.mpv_format.MPV_FORMAT_NODE,
         'audio-device-list': generated.mpv_format.MPV_FORMAT_NODE,
-        'video-out-params': generated.mpv_format.MPV_FORMAT_NODE,
+        'video-params': generated.mpv_format.MPV_FORMAT_NODE,
         'track-list': generated.mpv_format.MPV_FORMAT_NODE,
         'current-tracks/video': generated.mpv_format.MPV_FORMAT_NODE,
         'current-tracks/audio': generated.mpv_format.MPV_FORMAT_NODE,
