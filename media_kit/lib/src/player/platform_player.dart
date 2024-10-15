@@ -506,6 +506,8 @@ class PlayerConfiguration {
   /// Learn more: https://ffmpeg.org/ffmpeg-protocols.html#Protocol-Options
   final List<String> protocolWhitelist;
 
+  final String? configDir;
+
   /// {@macro player_configuration}
   const PlayerConfiguration({
     this.vo = 'null',
@@ -531,6 +533,7 @@ class PlayerConfiguration {
       'https',
       'crypto',
     ],
+    this.configDir,
   });
 }
 

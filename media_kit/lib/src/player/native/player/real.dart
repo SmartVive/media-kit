@@ -2502,6 +2502,12 @@ class NativePlayer extends PlatformPlayer {
         // [VideoController] internally sets --vid=auto upon attachment to enable video rendering & decoding.
         if (!test) 'vid': 'no',
       };
+      if (configuration.configDir != null) {
+        options.addAll(({
+          'config': 'yes',
+          'config-dir': configuration.configDir!,
+        }));
+      }
 
       if (Platform.isAndroid &&
           configuration.libass &&
