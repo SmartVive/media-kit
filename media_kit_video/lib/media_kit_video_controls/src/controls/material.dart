@@ -208,6 +208,9 @@ class MaterialVideoControlsThemeData {
   /// [Duration] for which the controls will be animated when shown or hidden.
   final Duration controlsTransitionDuration;
 
+  /// Callback for the controls visible change
+  final ValueChanged<bool>? onControlsVisibleChanged;
+
   /// Builder for the buffering indicator.
   final Widget Function(BuildContext)? bufferingIndicatorBuilder;
 
@@ -309,6 +312,7 @@ class MaterialVideoControlsThemeData {
     this.padding,
     this.controlsHoverDuration = const Duration(seconds: 3),
     this.controlsTransitionDuration = const Duration(milliseconds: 300),
+    this.onControlsVisibleChanged,
     this.bufferingIndicatorBuilder,
     this.volumeIndicatorBuilder,
     this.brightnessIndicatorBuilder,
@@ -371,6 +375,7 @@ class MaterialVideoControlsThemeData {
     Color? backdropColor,
     Duration? controlsHoverDuration,
     Duration? controlsTransitionDuration,
+    ValueChanged<bool>? onControlsVisibleChanged,
     Widget Function(BuildContext)? bufferingIndicatorBuilder,
     Widget Function(BuildContext, double)? volumeIndicatorBuilder,
     Widget Function(BuildContext, double)? brightnessIndicatorBuilder,
@@ -435,6 +440,8 @@ class MaterialVideoControlsThemeData {
           controlsHoverDuration ?? this.controlsHoverDuration,
       controlsTransitionDuration:
           controlsTransitionDuration ?? this.controlsTransitionDuration,
+      onControlsVisibleChanged:
+          onControlsVisibleChanged ?? this.onControlsVisibleChanged,
       bufferingIndicatorBuilder:
           bufferingIndicatorBuilder ?? this.bufferingIndicatorBuilder,
       volumeIndicatorBuilder:
@@ -612,17 +619,7 @@ class _MaterialVideoControlsState extends State<_MaterialVideoControls> {
       );
 
       if (_theme(context).visibleOnMount) {
-        _timer = Timer(
-          _theme(context).controlsHoverDuration,
-          () {
-            if (mounted) {
-              setState(() {
-                visible = false;
-              });
-              unshiftSubtitle();
-            }
-          },
-        );
+        _startHideControlsTimer();
       }
     }
   }
@@ -669,26 +666,11 @@ class _MaterialVideoControlsState extends State<_MaterialVideoControls> {
 
   void onTap() {
     if (!visible) {
-      setState(() {
-        mount = true;
-        visible = true;
-      });
-      shiftSubtitle();
-      _timer?.cancel();
-      _timer = Timer(_theme(context).controlsHoverDuration, () {
-        if (mounted) {
-          setState(() {
-            visible = false;
-          });
-          unshiftSubtitle();
-        }
-      });
+      _showControls();
+      _startHideControlsTimer();
     } else {
-      setState(() {
-        visible = false;
-      });
-      unshiftSubtitle();
-      _timer?.cancel();
+      _hideControls();
+      _cancelHideControlsTimer();
     }
   }
 
@@ -723,14 +705,8 @@ class _MaterialVideoControlsState extends State<_MaterialVideoControls> {
       showSwipeDuration = true;
       _seekBarSwipeDurationValueNotifier.value = relativePosition;
     });
-    if (!visible) {
-      setState(() {
-        mount = true;
-        visible = true;
-      });
-      shiftSubtitle();
-    }
-    _timer?.cancel();
+    _showControls();
+    _cancelHideControlsTimer();
   }
 
   void onHorizontalDragEnd() {
@@ -740,17 +716,40 @@ class _MaterialVideoControlsState extends State<_MaterialVideoControls> {
       _dragInitialDelta = Offset.zero;
       showSwipeDuration = false;
     });
-    _timer = Timer(
-      _theme(context).controlsHoverDuration,
-          () {
-        if (mounted) {
-          setState(() {
-            visible = false;
-          });
-          unshiftSubtitle();
-        }
-      },
-    );
+    _startHideControlsTimer();
+  }
+
+  void _showControls() {
+    if (!visible) {
+      setState(() {
+        visible = true;
+        _theme(context).onControlsVisibleChanged?.call(visible);
+      });
+      shiftSubtitle();
+    }
+  }
+
+  void _hideControls() {
+    if (visible) {
+      setState(() {
+        visible = false;
+        _theme(context).onControlsVisibleChanged?.call(visible);
+      });
+      unshiftSubtitle();
+    }
+  }
+
+  void _startHideControlsTimer() {
+    _timer?.cancel();
+    _timer = Timer(_theme(context).controlsHoverDuration, () {
+      if (mounted) {
+        _hideControls();
+      }
+    });
+  }
+
+  void _cancelHideControlsTimer() {
+    _timer?.cancel();
   }
 
   bool _isInSegment(double localX, int segmentIndex) {
@@ -924,9 +923,7 @@ class _MaterialVideoControlsState extends State<_MaterialVideoControls> {
                 duration: _theme(context).controlsTransitionDuration,
                 onEnd: () {
                   setState(() {
-                    if (!visible) {
-                      mount = false;
-                    }
+                    mount = visible;
                   });
                 },
                 child: Stack(
@@ -967,15 +964,7 @@ class _MaterialVideoControlsState extends State<_MaterialVideoControls> {
                       child: Listener(
                         behavior: HitTestBehavior.translucent,
                         onPointerDown: (event) {
-                          _timer?.cancel();
-                          _timer = Timer(_theme(context).controlsHoverDuration, () {
-                            if (mounted) {
-                              setState(() {
-                                visible = false;
-                              });
-                              unshiftSubtitle();
-                            }
-                          });
+                          _startHideControlsTimer();
                         },
                         child: const SizedBox.expand(),
                       ),
@@ -1131,20 +1120,10 @@ class _MaterialVideoControlsState extends State<_MaterialVideoControls> {
                                     !showSwipeDuration)
                                   MaterialPositionSeekBar(
                                     onSeekStart: () {
-                                      _timer?.cancel();
+                                      _cancelHideControlsTimer();
                                     },
                                     onSeekEnd: () {
-                                      _timer = Timer(
-                                        _theme(context).controlsHoverDuration,
-                                        () {
-                                          if (mounted) {
-                                            setState(() {
-                                              visible = false;
-                                            });
-                                            unshiftSubtitle();
-                                          }
-                                        },
-                                      );
+                                      _startHideControlsTimer();
                                     },
                                   ),
                                 Container(
@@ -1187,15 +1166,7 @@ class _MaterialVideoControlsState extends State<_MaterialVideoControls> {
                         child: Listener(
                           behavior: HitTestBehavior.translucent,
                           onPointerDown: (event) {
-                            _timer?.cancel();
-                            _timer = Timer(_theme(context).controlsHoverDuration, () {
-                              if (mounted) {
-                                setState(() {
-                                  visible = false;
-                                });
-                                unshiftSubtitle();
-                              }
-                            });
+                            _startHideControlsTimer();
                           },
                           child: const SizedBox.expand(),
                         ),
