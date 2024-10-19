@@ -612,17 +612,7 @@ class _MaterialVideoControlsState extends State<_MaterialVideoControls> {
       );
 
       if (_theme(context).visibleOnMount) {
-        _timer = Timer(
-          _theme(context).controlsHoverDuration,
-          () {
-            if (mounted) {
-              setState(() {
-                visible = false;
-              });
-              unshiftSubtitle();
-            }
-          },
-        );
+        _startHideControlsTimer();
       }
     }
   }
@@ -669,26 +659,11 @@ class _MaterialVideoControlsState extends State<_MaterialVideoControls> {
 
   void onTap() {
     if (!visible) {
-      setState(() {
-        mount = true;
-        visible = true;
-      });
-      shiftSubtitle();
-      _timer?.cancel();
-      _timer = Timer(_theme(context).controlsHoverDuration, () {
-        if (mounted) {
-          setState(() {
-            visible = false;
-          });
-          unshiftSubtitle();
-        }
-      });
+      _showControls();
+      _startHideControlsTimer();
     } else {
-      setState(() {
-        visible = false;
-      });
-      unshiftSubtitle();
-      _timer?.cancel();
+      _hideControls();
+      _cancelHideControlsTimer();
     }
   }
 
@@ -723,14 +698,8 @@ class _MaterialVideoControlsState extends State<_MaterialVideoControls> {
       showSwipeDuration = true;
       _seekBarSwipeDurationValueNotifier.value = relativePosition;
     });
-    if (!visible) {
-      setState(() {
-        mount = true;
-        visible = true;
-      });
-      shiftSubtitle();
-    }
-    _timer?.cancel();
+    _showControls();
+    _cancelHideControlsTimer();
   }
 
   void onHorizontalDragEnd() {
@@ -740,17 +709,38 @@ class _MaterialVideoControlsState extends State<_MaterialVideoControls> {
       _dragInitialDelta = Offset.zero;
       showSwipeDuration = false;
     });
-    _timer = Timer(
-      _theme(context).controlsHoverDuration,
-          () {
-        if (mounted) {
-          setState(() {
-            visible = false;
-          });
-          unshiftSubtitle();
-        }
-      },
-    );
+    _startHideControlsTimer();
+  }
+
+  void _showControls() {
+    if (!visible) {
+      setState(() {
+        visible = true;
+      });
+      shiftSubtitle();
+    }
+  }
+
+  void _hideControls() {
+    if (visible) {
+      setState(() {
+        visible = false;
+      });
+      unshiftSubtitle();
+    }
+  }
+
+  void _startHideControlsTimer() {
+    _timer?.cancel();
+    _timer = Timer(_theme(context).controlsHoverDuration, () {
+      if (mounted) {
+        _hideControls();
+      }
+    });
+  }
+
+  void _cancelHideControlsTimer() {
+    _timer?.cancel();
   }
 
   bool _isInSegment(double localX, int segmentIndex) {
@@ -924,9 +914,7 @@ class _MaterialVideoControlsState extends State<_MaterialVideoControls> {
                 duration: _theme(context).controlsTransitionDuration,
                 onEnd: () {
                   setState(() {
-                    if (!visible) {
-                      mount = false;
-                    }
+                    mount = visible;
                   });
                 },
                 child: Stack(
@@ -967,15 +955,7 @@ class _MaterialVideoControlsState extends State<_MaterialVideoControls> {
                       child: Listener(
                         behavior: HitTestBehavior.translucent,
                         onPointerDown: (event) {
-                          _timer?.cancel();
-                          _timer = Timer(_theme(context).controlsHoverDuration, () {
-                            if (mounted) {
-                              setState(() {
-                                visible = false;
-                              });
-                              unshiftSubtitle();
-                            }
-                          });
+                          _startHideControlsTimer();
                         },
                         child: const SizedBox.expand(),
                       ),
@@ -1131,20 +1111,10 @@ class _MaterialVideoControlsState extends State<_MaterialVideoControls> {
                                     !showSwipeDuration)
                                   MaterialPositionSeekBar(
                                     onSeekStart: () {
-                                      _timer?.cancel();
+                                      _cancelHideControlsTimer();
                                     },
                                     onSeekEnd: () {
-                                      _timer = Timer(
-                                        _theme(context).controlsHoverDuration,
-                                        () {
-                                          if (mounted) {
-                                            setState(() {
-                                              visible = false;
-                                            });
-                                            unshiftSubtitle();
-                                          }
-                                        },
-                                      );
+                                      _startHideControlsTimer();
                                     },
                                   ),
                                 Container(
@@ -1187,15 +1157,7 @@ class _MaterialVideoControlsState extends State<_MaterialVideoControls> {
                         child: Listener(
                           behavior: HitTestBehavior.translucent,
                           onPointerDown: (event) {
-                            _timer?.cancel();
-                            _timer = Timer(_theme(context).controlsHoverDuration, () {
-                              if (mounted) {
-                                setState(() {
-                                  visible = false;
-                                });
-                                unshiftSubtitle();
-                              }
-                            });
+                            _startHideControlsTimer();
                           },
                           child: const SizedBox.expand(),
                         ),
