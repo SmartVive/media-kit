@@ -228,6 +228,8 @@ class MaterialVideoControlsThemeData {
   /// Custom builder for seek indicator.
   final Widget Function(BuildContext, double)? speedUpIndicatorBuilder;
 
+  final Widget Function(BuildContext context)? overlayBuilder;
+
   // BUTTON BAR
 
   /// Buttons to be displayed in the primary button bar.
@@ -323,6 +325,7 @@ class MaterialVideoControlsThemeData {
     this.brightnessIndicatorBuilder,
     this.seekIndicatorBuilder,
     this.speedUpIndicatorBuilder,
+    this.overlayBuilder,
     this.primaryButtonBar = const [
       Spacer(flex: 2),
       MaterialSkipPreviousButton(),
@@ -388,6 +391,7 @@ class MaterialVideoControlsThemeData {
     Widget Function(BuildContext, double)? brightnessIndicatorBuilder,
     Widget Function(BuildContext, Duration)? seekIndicatorBuilder,
     Widget Function(BuildContext, double)? speedUpIndicatorBuilder,
+    Widget Function(BuildContext context)? overlayBuilder,
     List<Widget>? primaryButtonBar,
     List<Widget>? topButtonBar,
     EdgeInsets? topButtonBarMargin,
@@ -461,6 +465,7 @@ class MaterialVideoControlsThemeData {
       seekIndicatorBuilder: seekIndicatorBuilder ?? this.seekIndicatorBuilder,
       speedUpIndicatorBuilder:
           speedUpIndicatorBuilder ?? this.speedUpIndicatorBuilder,
+      overlayBuilder: overlayBuilder ?? this.overlayBuilder,
       primaryButtonBar: primaryButtonBar ?? this.primaryButtonBar,
       topButtonBar: topButtonBar ?? this.topButtonBar,
       topButtonBarMargin: topButtonBarMargin ?? this.topButtonBarMargin,
@@ -1200,6 +1205,18 @@ class _MaterialVideoControlsState extends State<_MaterialVideoControls> {
                             color: const Color(0xFFFFFFFF),
                           ),
                         ),
+                      ),
+                    ),
+                    IgnorePointer(
+                      ignoring: !mount,
+                      child: Container(
+                        padding: _theme(context).padding ??
+                            (
+                                // Add padding in fullscreen!
+                                isFullscreen(context)
+                                    ? MediaQuery.of(context).padding
+                                    : EdgeInsets.zero),
+                        child: theme(context).overlayBuilder?.call(context),
                       ),
                     ),
                     Positioned.fill(
