@@ -111,7 +111,7 @@ class Video extends StatefulWidget {
   final Future<void> Function() onEnterFullscreen;
 
   /// The callback invoked when the [Video] exits fullscreen.
-  final Future<void> Function() onExitFullscreen;
+  final Future<void> Function([dynamic result]) onExitFullscreen;
 
   final void Function(dynamic value)? onPopFullscreen;
 
@@ -499,7 +499,7 @@ Future<void> defaultEnterNativeFullscreen() async {
 }
 
 /// Makes the native window exit fullscreen.
-Future<void> defaultExitNativeFullscreen() async {
+Future<void> defaultExitNativeFullscreen([dynamic result]) async {
   try {
     if (Platform.isAndroid || Platform.isIOS) {
       await Future.wait(
