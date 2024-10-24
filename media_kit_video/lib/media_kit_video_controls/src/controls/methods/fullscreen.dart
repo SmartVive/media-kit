@@ -90,11 +90,11 @@ Future<void> enterFullscreen(BuildContext context) {
 }
 
 /// Makes the [Video] present in the current [BuildContext] exit fullscreen.
-Future<void> exitFullscreen(BuildContext context) {
+Future<void> exitFullscreen(BuildContext context, [dynamic result]) {
   return lock.synchronized(() async {
     if (isFullscreen(context)) {
       if (context.mounted) {
-        await Navigator.of(context).maybePop();
+        await Navigator.of(context).maybePop(result);
         // It is known that this [context] will have a [FullscreenInheritedWidget] above it.
         if (context.mounted) {
           FullscreenInheritedWidget.of(context).parent.refreshView();

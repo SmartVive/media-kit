@@ -31,7 +31,7 @@ Future<void> Function()? onEnterFullscreen(BuildContext context) =>
     VideoStateInheritedWidget.of(context).state.widget.onEnterFullscreen;
 
 /// Returns the callback which must be invoked when the video exits fullscreen mode.
-Future<void> Function()? onExitFullscreen(BuildContext context) =>
+Future<void> Function([dynamic result])? onExitFullscreen(BuildContext context) =>
     VideoStateInheritedWidget.of(context).state.widget.onExitFullscreen;
 
 void Function(dynamic)? onPopFullscreen(BuildContext context) =>
