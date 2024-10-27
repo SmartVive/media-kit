@@ -77,8 +77,8 @@ Future<void> enterFullscreen(BuildContext context) {
                 ),
               ),
             ),
-            transitionDuration: Duration.zero,
-            reverseTransitionDuration: Duration.zero,
+            transitionDuration: const Duration(milliseconds: 200),
+            reverseTransitionDuration: const Duration(milliseconds: 200),
           ),
         ).then((value) {
           stateValue.widget.onPopFullscreen?.call(value);
