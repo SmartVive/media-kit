@@ -112,6 +112,9 @@ abstract class PlatformPlayer {
     ),
     /* ERROR STREAM SHOULD NOT BE DISTINCT */
     errorController.stream,
+    videoViewSizeController.stream.distinct(
+      (previous, current) => ListEquality().equals(previous, current),
+    )
   );
 
   @mustCallSuper
@@ -390,6 +393,9 @@ abstract class PlatformPlayer {
   @protected
   final StreamController<List<String>> subtitleController =
       StreamController<List<String>>.broadcast();
+
+  final StreamController<List<int>> videoViewSizeController =
+  StreamController<List<int>>.broadcast();
 
   // --------------------------------------------------
 

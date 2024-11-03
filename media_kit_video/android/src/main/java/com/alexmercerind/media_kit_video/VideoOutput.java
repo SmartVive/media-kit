@@ -10,6 +10,9 @@ package com.alexmercerind.media_kit_video;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
+import android.view.Surface;
+
+import androidx.annotation.Nullable;
 
 import java.lang.reflect.Method;
 import java.util.HashSet;
@@ -18,7 +21,7 @@ import java.util.Objects;
 
 import io.flutter.view.TextureRegistry;
 
-public class VideoOutput implements TextureRegistry.SurfaceProducer.Callback {
+public class VideoOutput {
     private static final String TAG = "VideoOutput";
     private static final Method newGlobalObjectRef;
     private static final Method deleteGlobalObjectRef;
@@ -45,73 +48,89 @@ public class VideoOutput implements TextureRegistry.SurfaceProducer.Callback {
 
     private final TextureUpdateCallback textureUpdateCallback;
 
-    private final TextureRegistry.SurfaceProducer surfaceProducer;
+    private final TextureRegistry.SurfaceTextureEntry texture;
+    @Nullable
+    private Surface surface;
+    private int requestBufferWidth;
+    private int requestedBufferHeight;
 
     private final Object lock = new Object();
 
     VideoOutput(TextureRegistry textureRegistryReference, TextureUpdateCallback textureUpdateCallback) {
         this.textureUpdateCallback = textureUpdateCallback;
 
-        surfaceProducer = textureRegistryReference.createSurfaceProducer();
-        surfaceProducer.setCallback(this);
+        texture = textureRegistryReference.createSurfaceTexture();
 
         // By default, android.graphics.SurfaceTexture has a size of 1x1.
-        setSurfaceSize(1, 1, true);
+        setSurfaceSize(1, 1, false);
+        createSurface();
     }
 
     public void dispose() {
         synchronized (lock) {
             try {
-                surfaceProducer.getSurface().release();
+                if (surface != null) {
+                    surface.release();
+                    surface = null;
+                }
             } catch (Throwable e) {
                 Log.e(TAG, "dispose", e);
             }
             try {
-                surfaceProducer.release();
+                texture.release();
             } catch (Throwable e) {
                 Log.e(TAG, "dispose", e);
             }
-            onSurfaceDestroyed();
+            destroySurface();
         }
     }
 
     public void setSurfaceSize(int width, int height) {
-        setSurfaceSize(width, height, false);
+        setSurfaceSize(width, height, true);
     }
 
-    private void setSurfaceSize(int width, int height, boolean force) {
+    private void setSurfaceSize(int width, int height, boolean callUpdate) {
         synchronized (lock) {
             try {
-                if (!force && surfaceProducer.getWidth() == width && surfaceProducer.getHeight() == height) {
+                if (requestBufferWidth == width && requestedBufferHeight == height) {
                     return;
                 }
-                surfaceProducer.setSize(width, height);
-                onSurfaceCreated();
+                requestBufferWidth = width;
+                requestedBufferHeight = height;
+                texture.surfaceTexture().setDefaultBufferSize(width, height);
+                if (callUpdate) {
+                    textureUpdateCallback.onTextureUpdate(id, wid, requestBufferWidth, requestedBufferHeight);
+                }
             } catch (Throwable e) {
                 Log.e(TAG, "setSurfaceSize", e);
             }
         }
     }
 
-    @Override
-    public void onSurfaceCreated() {
+    public Surface getSurface() {
         synchronized (lock) {
-            Log.i(TAG, "onSurfaceCreated");
-            id = surfaceProducer.id();
-            wid = newGlobalObjectRef(surfaceProducer.getSurface());
-            textureUpdateCallback.onTextureUpdate(id, wid, surfaceProducer.getWidth(), surfaceProducer.getHeight());
+            if (surface == null) {
+                surface = new Surface(texture.surfaceTexture());
+            }
+            return surface;
         }
     }
 
-    @Override
-    public void onSurfaceDestroyed() {
+    private void createSurface() {
         synchronized (lock) {
-            Log.i(TAG, "onSurfaceDestroyed");
-            textureUpdateCallback.onTextureUpdate(id, 0, surfaceProducer.getWidth(), surfaceProducer.getHeight());
-            if (wid != 0) {
-                final long widReference = wid;
-                handler.postDelayed(() -> deleteGlobalObjectRef(widReference), 5000);
-            }
+            Log.i(TAG, "createSurface" + getSurface());
+            id = texture.id();
+            wid = newGlobalObjectRef(getSurface());
+            textureUpdateCallback.onTextureUpdate(id, wid, requestBufferWidth, requestedBufferHeight);
+        }
+    }
+
+    private void destroySurface() {
+        Log.i(TAG, "destroySurface");
+        textureUpdateCallback.onTextureUpdate(id, 0, requestBufferWidth, requestedBufferHeight);
+        if (wid != 0) {
+            final long widReference = wid;
+            handler.postDelayed(() -> deleteGlobalObjectRef(widReference), 5000);
         }
     }
 

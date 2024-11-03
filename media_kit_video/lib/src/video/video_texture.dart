@@ -7,6 +7,7 @@ import 'dart:io';
 import 'dart:async';
 import 'package:flutter/widgets.dart';
 import 'package:flutter/services.dart';
+import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video_controls/media_kit_video_controls.dart';
 
 import 'package:media_kit_video/src/subtitle/subtitle_view.dart';
@@ -228,6 +229,7 @@ class VideoState extends State<Video> with WidgetsBindingObserver {
               context,
             )?.disposeNotifiers ??
             true;
+    _calculateVideoViewSize();
     super.didChangeDependencies();
   }
 
@@ -304,6 +306,7 @@ class VideoState extends State<Video> with WidgetsBindingObserver {
         widget.controller.player.stream.width.listen(
           (value) {
             _width = value;
+            //_calculateVideoViewSize();
             final visible = (_width ?? 0) > 0 && (_height ?? 0) > 0;
             if (_visible != visible) {
               setState(() {
@@ -315,6 +318,7 @@ class VideoState extends State<Video> with WidgetsBindingObserver {
         widget.controller.player.stream.height.listen(
           (value) {
             _height = value;
+            //_calculateVideoViewSize();
             final visible = (_width ?? 0) > 0 && (_height ?? 0) > 0;
             if (_visible != visible) {
               setState(() {
@@ -361,6 +365,24 @@ class VideoState extends State<Video> with WidgetsBindingObserver {
   }
 
   void refreshView() {}
+
+  @override
+  void didChangeMetrics() {
+    super.didChangeMetrics();
+    _calculateVideoViewSize();
+  }
+
+  void _calculateVideoViewSize() async {
+    final Size? displaySize = View.maybeOf(context)?.physicalSize;
+    if (displaySize == null || displaySize.isEmpty) return;
+
+    final PlatformPlayer? platform = widget.controller.player.platform;
+    if (platform is NativePlayer) {
+      if (!platform.videoViewSizeController.isClosed) {
+        platform.videoViewSizeController.add([displaySize.width.toInt(), displaySize.height.toInt()]);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

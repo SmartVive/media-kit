@@ -71,6 +71,14 @@ class AndroidVideoController extends PlatformVideoController {
     });
   }
 
+  Future<void> rectListener() {
+    return lock.synchronized(() async {
+      final width = rect.value?.width.toInt() ?? 1;
+      final height = rect.value?.height.toInt() ?? 1;
+      await setProperty('android-surface-size', [width, height].join('x'));
+    });
+  }
+
   /// Hook to attach --wid & --vo properties before video output is initialized.
   Future<void> onLoadHook() async {
     // This setup is important to take away control of android.view.Surface from libmpv, when the currently playing gets switched.
@@ -96,54 +104,40 @@ class AndroidVideoController extends PlatformVideoController {
   /// [StreamSubscription] for listening to video [Rect].
   StreamSubscription<VideoParams>? videoParamsSubscription;
 
+  StreamSubscription<List<int>>? videoViewSizeSubscription;
+
   /// {@macro android_video_controller}
   AndroidVideoController._(
     super.player,
     super.configuration,
   ) {
     wid.addListener(widListener);
+    rect.addListener(rectListener);
     platform.onLoadHooks.add(onLoadHook);
     platform.onUnloadHooks.add(onUnloadHook);
-    videoParamsSubscription = player.stream.videoParams.listen(
-      (event) => lock.synchronized(() async {
-        if ([0, null].contains(event.dw) || [0, null].contains(event.dh)) {
-          return;
-        }
 
-        final int handle = await player.handle;
+    videoViewSizeSubscription = player.stream.videoViewSize.listen((event) async {
+      final int width = event[0];
+      final int height = event[1];
+      if ([0, null].contains(width) || [0, null].contains(height)) {
+        return;
+      }
 
-        final int width;
-        final int height;
-        if (event.rotate == 0 || event.rotate == 180) {
-          width = event.dw ?? 0;
-          height = event.dh ?? 0;
-        } else {
-          // width & height are swapped for 90 or 270 degrees rotation.
-          width = event.dh ?? 0;
-          height = event.dw ?? 0;
-        }
+      final int handle = await player.handle;
 
-        await _channel.invokeMethod(
-          'VideoOutputManager.SetSurfaceSize',
-          {
-            'handle': handle.toString(),
-            'width': width.toString(),
-            'height': height.toString(),
-          },
-        );
+      await _channel.invokeMethod(
+        'VideoOutputManager.SetSurfaceSize',
+        {
+          'handle': handle.toString(),
+          'width': width.toString(),
+          'height': height.toString(),
+        },
+      );
 
-        rect.value = Rect.fromLTWH(
-          0.0,
-          0.0,
-          width.toDouble(),
-          height.toDouble(),
-        );
-
-        if (!waitUntilFirstFrameRenderedCompleter.isCompleted) {
-          waitUntilFirstFrameRenderedCompleter.complete();
-        }
-      }),
-    );
+      if (!waitUntilFirstFrameRenderedCompleter.isCompleted) {
+        waitUntilFirstFrameRenderedCompleter.complete();
+      }
+    });
   }
 
   /// {@macro android_video_controller}
@@ -226,14 +220,11 @@ class AndroidVideoController extends PlatformVideoController {
 
     await controller.setProperties(
       {
-        // It is necessary to set vo=null here to avoid SIGSEGV, --wid must be assigned before vo=gpu is set.
-        'vo': 'null',
         'hwdec': configuration.hwdec!,
         'vid': 'auto',
         'opengl-es': 'yes',
         'force-window': 'yes',
         'gpu-context': 'android',
-        'sub-use-margins': 'no',
         'sub-font-provider': 'none',
         'sub-scale-with-window': 'yes',
         'hwdec-codecs': 'h264,hevc,mpeg4,mpeg2video,vp8,vp9,av1',
@@ -268,6 +259,7 @@ class AndroidVideoController extends PlatformVideoController {
     platform.onLoadHooks.remove(onLoadHook);
     platform.onUnloadHooks.remove(onUnloadHook);
     await videoParamsSubscription?.cancel();
+    await videoViewSizeSubscription?.cancel();
     final handle = await player.handle;
     _controllers.remove(handle);
     await _channel.invokeMethod(
