@@ -306,7 +306,6 @@ class VideoState extends State<Video> with WidgetsBindingObserver {
         widget.controller.player.stream.width.listen(
           (value) {
             _width = value;
-            //_calculateVideoViewSize();
             final visible = (_width ?? 0) > 0 && (_height ?? 0) > 0;
             if (_visible != visible) {
               setState(() {
@@ -318,7 +317,6 @@ class VideoState extends State<Video> with WidgetsBindingObserver {
         widget.controller.player.stream.height.listen(
           (value) {
             _height = value;
-            //_calculateVideoViewSize();
             final visible = (_width ?? 0) > 0 && (_height ?? 0) > 0;
             if (_visible != visible) {
               setState(() {
@@ -378,6 +376,7 @@ class VideoState extends State<Video> with WidgetsBindingObserver {
 
     final PlatformPlayer? platform = widget.controller.player.platform;
     if (platform is NativePlayer) {
+      await platform.videoControllerCompleter.future;
       if (!platform.videoViewSizeController.isClosed) {
         platform.videoViewSizeController.add([displaySize.width.toInt(), displaySize.height.toInt()]);
       }
