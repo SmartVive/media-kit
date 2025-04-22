@@ -506,6 +506,9 @@ class PlayerConfiguration {
   /// Learn more: https://ffmpeg.org/ffmpeg-protocols.html#Protocol-Options
   final List<String> protocolWhitelist;
 
+  ///  Sets the options for native backend.
+  final Map<String, String>? options;
+
   /// {@macro player_configuration}
   const PlayerConfiguration({
     this.vo = 'null',
@@ -531,6 +534,7 @@ class PlayerConfiguration {
       'https',
       'crypto',
     ],
+    this.options,
   });
 }
 
