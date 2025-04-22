@@ -96,6 +96,8 @@ class PlayerStream {
   /// [Stream] emitting error messages. This may be used to handle & display errors to the user.
   final Stream<String> error;
 
+  final Stream<List<int>> videoViewSize;
+
   /// {@macro player_stream}
   const PlayerStream(
     this.playlist,
@@ -122,5 +124,6 @@ class PlayerStream {
     this.subtitle,
     this.log,
     this.error,
+    this.videoViewSize,
   );
 }

@@ -41,12 +41,6 @@ class NativeVideoController extends PlatformVideoController {
   /// Fixed height of the video output.
   int? height;
 
-  /// Width of the video (from [VideoParams]).
-  int? videoParamsWidth;
-
-  /// Height of the video (from [VideoParams]).
-  int? videoParamsHeight;
-
   /// [Lock] used to synchronize [onLoadHooks], [onUnloadHooks] & [subscription].
   final lock = Lock();
 
@@ -63,8 +57,11 @@ class NativeVideoController extends PlatformVideoController {
     }
   }
 
-  /// [StreamSubscription] for listening to video [Rect].
-  StreamSubscription<VideoParams>? videoParamsSubscription;
+  /// [StreamSubscription] for listening to video View Size.
+  StreamSubscription<List<int>>? videoViewSizeSubscription;
+
+  Timer? _resizeDebounceTimer;
+  DateTime? _preResizeTime;
 
   /// {@macro native_video_controller}
   NativeVideoController._(
@@ -72,40 +69,40 @@ class NativeVideoController extends PlatformVideoController {
     super.configuration,
   )   : width = configuration.width,
         height = configuration.height {
-    videoParamsSubscription = player.stream.videoParams.listen(
+    videoViewSizeSubscription = player.stream.videoViewSize.listen(
       (event) => lock.synchronized(() async {
-        if ([0, null].contains(event.dw) || [0, null].contains(event.dh)) {
-          return;
+        _resizeDebounceTimer?.cancel();
+        int delay = 0;
+        if (_preResizeTime != null) {
+          delay = (Duration(milliseconds: 500) - DateTime.now().difference(_preResizeTime!)).inMilliseconds.clamp(0, 500);
         }
+        _resizeDebounceTimer = Timer(Duration(milliseconds: delay), () async {
+          _preResizeTime = DateTime.now();
+          final int width = event[0];
+          final int height = event[1];
+          if ([0, null].contains(width) || [0, null].contains(height)) {
+            return;
+          }
 
-        final int handle = await player.handle;
+          final int handle = await player.handle;
 
-        final int width;
-        final int height;
-        if (event.rotate == 0 || event.rotate == 180) {
-          width = event.dw ?? 0;
-          height = event.dh ?? 0;
-        } else {
-          // width & height are swapped for 90 or 270 degrees rotation.
-          width = event.dh ?? 0;
-          height = event.dw ?? 0;
-        }
+          if (width == this.width && height == this.height) {
+            return;
+          }
 
-        if (videoParamsWidth == width && videoParamsHeight == height) {
-          return;
-        }
+          this.width = width;
+          this.height = height;
 
-        videoParamsWidth = width;
-        videoParamsHeight = height;
+          await _channel.invokeMethod(
+            'VideoOutputManager.SetSize',
+            {
+              'handle': handle.toString(),
+              'width': width.toString(),
+              'height': height.toString(),
+            },
+          );
+        });
 
-        await _channel.invokeMethod(
-          'VideoOutputManager.SetSize',
-          {
-            'handle': handle.toString(),
-            'width': width.toString(),
-            'height': height.toString(),
-          },
-        );
       }),
     );
   }
@@ -205,40 +202,13 @@ class NativeVideoController extends PlatformVideoController {
     int? width,
     int? height,
   }) async {
-    final handle = await player.handle;
-    if (this.width == width && this.height == height) {
-      // No need to resize if the requested size is same as the current size.
-      return;
-    }
-    if (width != null && height != null) {
-      this.width = width;
-      this.height = height;
-      await _channel.invokeMethod(
-        'VideoOutputManager.SetSize',
-        {
-          'handle': handle.toString(),
-          'width': width.toString(),
-          'height': height.toString(),
-        },
-      );
-    } else {
-      this.width = null;
-      this.height = null;
-      await _channel.invokeMethod(
-        'VideoOutputManager.SetSize',
-        {
-          'handle': handle.toString(),
-          'width': videoParamsWidth?.toString() ?? 'null',
-          'height': videoParamsHeight?.toString() ?? 'null',
-        },
-      );
-    }
+
   }
 
   /// Disposes the instance. Releases allocated resources back to the system.
   Future<void> _dispose() async {
     super.dispose();
-    await videoParamsSubscription?.cancel();
+    await videoViewSizeSubscription?.cancel();
     final handle = await player.handle;
     _controllers.remove(handle);
     await _channel.invokeMethod(

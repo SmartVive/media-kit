@@ -7,6 +7,7 @@ import 'dart:io';
 import 'dart:async';
 import 'package:flutter/widgets.dart';
 import 'package:flutter/services.dart';
+import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video_controls/media_kit_video_controls.dart';
 
 import 'package:media_kit_video/src/subtitle/subtitle_view.dart';
@@ -232,6 +233,7 @@ class VideoState extends State<Video> with WidgetsBindingObserver {
               context,
             )?.disposeNotifiers ??
             true;
+    _calculateVideoViewSize();
     super.didChangeDependencies();
   }
 
@@ -368,6 +370,25 @@ class VideoState extends State<Video> with WidgetsBindingObserver {
   }
 
   void refreshView() {}
+
+  @override
+  void didChangeMetrics() {
+    super.didChangeMetrics();
+    _calculateVideoViewSize();
+  }
+
+  void _calculateVideoViewSize() async {
+    final Size? displaySize = View.maybeOf(context)?.physicalSize;
+    if (displaySize == null || displaySize.isEmpty) return;
+
+    final PlatformPlayer? platform = widget.controller.player.platform;
+    if (platform is NativePlayer) {
+      await platform.videoControllerCompleter.future;
+      if (!platform.videoViewSizeController.isClosed) {
+        platform.videoViewSizeController.add([displaySize.width.toInt(), displaySize.height.toInt()]);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
