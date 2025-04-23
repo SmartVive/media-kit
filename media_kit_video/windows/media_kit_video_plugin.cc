@@ -142,6 +142,8 @@ void MediaKitVideoPlugin::HandleMethodCall(
         ::GetAncestor(registrar_->GetView()->GetNativeWindow(), GA_ROOT);
     Utils::ExitNativeFullscreen(window);
     result->Success(flutter::EncodableValue(std::monostate{}));
+  } else if (method_call.method_name().compare("Utils.isFullscreen") == 0) {
+    result->Success(flutter::EncodableValue(Utils::fullscreen_));
   } else {
     result->NotImplemented();
   }

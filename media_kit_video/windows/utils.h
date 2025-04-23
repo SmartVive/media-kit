@@ -23,10 +23,11 @@ class Utils {
 
   static bool IsWindows10RTMOrGreater();
 
+  static bool fullscreen_;
+
  private:
   static constexpr auto kFlutterViewWindowClassName = L"FLUTTERVIEW";
 
-  static bool fullscreen_;
   static RECT rect_before_fullscreen_;
 };
 
