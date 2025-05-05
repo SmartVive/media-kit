@@ -1340,6 +1340,53 @@ class NativePlayer extends PlatformPlayer {
     mpv.mpv_unobserve_property(ctx, reply);
   }
 
+  Future<void> observeEvent(
+    int eventId,
+    Future<void> Function(Pointer<void>) listener, {
+    bool waitForInitialization = true,
+  }) async {
+    if (disposed) {
+      throw AssertionError('[Player] has been disposed');
+    }
+
+    if (waitForInitialization) {
+      await waitForPlayerInitialization;
+      await waitForVideoControllerInitializationIfAttached;
+    }
+
+    if (eventObserved.containsKey(eventId)) {
+      throw ArgumentError.value(
+        eventId,
+        'eventId',
+        'Already observed',
+      );
+    }
+    eventObserved[eventId] = listener;
+  }
+
+  Future<void> unobserveEvent(
+    int eventId, {
+    bool waitForInitialization = true,
+  }) async {
+    if (disposed) {
+      throw AssertionError('[Player] has been disposed');
+    }
+
+    if (waitForInitialization) {
+      await waitForPlayerInitialization;
+      await waitForVideoControllerInitializationIfAttached;
+    }
+
+    if (!eventObserved.containsKey(eventId)) {
+      throw ArgumentError.value(
+        eventId,
+        'eventId',
+        'Not observed',
+      );
+    }
+    eventObserved.remove(eventId);
+  }
+
   /// Invokes command for the internal libmpv instance of this [Player].
   /// Please use this method only if you know what you are doing, existing methods in [Player] implementation are suited for the most use cases.
   ///
@@ -1363,6 +1410,19 @@ class NativePlayer extends PlatformPlayer {
   }
 
   Future<void> _handler(Pointer<generated.mpv_event> event) async {
+    if(eventObserved.containsKey(event.ref.event_id)) {
+      final fn = eventObserved[event.ref.event_id];
+      if (fn != null) {
+        final data = event.ref.data;
+        try {
+          await fn.call(data);
+        } catch (exception, stacktrace) {
+          print(exception);
+          print(stacktrace);
+        }
+      }
+    }
+
     if (event.ref.event_id ==
         generated.mpv_event_id.MPV_EVENT_PROPERTY_CHANGE) {
       final prop = event.ref.data.cast<generated.mpv_event_property>();
@@ -2699,6 +2759,9 @@ class NativePlayer extends PlatformPlayer {
   /// Currently observed properties through [observeProperty].
   final HashMap<String, Future<void> Function(String)> observed =
       HashMap<String, Future<void> Function(String)>();
+
+  final HashMap<int, Future<void> Function(Pointer<Void>)> eventObserved =
+      HashMap<int, Future<void> Function(Pointer<Void>)>();
 
   /// The methods which must execute synchronously before playback of a source can begin.
   final List<Future<void> Function()> onLoadHooks = [];
