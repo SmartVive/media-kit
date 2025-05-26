@@ -435,16 +435,6 @@ abstract class PlatformPlayer {
 ///
 /// {@endtemplate}
 class PlayerConfiguration {
-  /// Sets the video output driver for native backend.
-  ///
-  /// Default: `null`.
-  final String? vo;
-
-  /// Enables on-screen controls for native backend.
-  ///
-  /// Default: `false`.
-  final bool osc;
-
   /// Enables or disables pitch shift control for native backend.
   ///
   /// Enabling this option may result in de-syncing of audio & video.
@@ -484,62 +474,22 @@ class PlayerConfiguration {
   /// On Android, this option requires [libassAndroidFont] to be set.
   final bool libass;
 
-  /// Asset name of the `.ttf` font file to be used for [libass](https://github.com/libass/libass) based subtitle rendering on Android.
-  ///
-  /// e.g. `assets/fonts/subtitle.ttf`
-  final String? libassAndroidFont;
-
-  /// Font name of the `.ttf` font file to be used for [libass](https://github.com/libass/libass) based subtitle rendering on Android.
-  ///
-  /// e.g. `Droid Sans Fallback`
-  ///
-  /// NOTE: The font name is required, not the file name.
-  final String? libassAndroidFontName;
-
   /// Sets the log level on native backend.
   /// Default: `none`.
   final MPVLogLevel logLevel;
-
-  /// Sets the demuxer cache size (in bytes) for native backend.
-  ///
-  /// Default: `32` MB or `32 * 1024 * 1024` bytes.
-  final int bufferSize;
-
-  /// Sets the list of allowed protocols for native backend.
-  ///
-  /// Default: `['file', 'tcp', 'tls', 'http', 'https', 'crypto', 'data']`.
-  ///
-  /// Learn more: https://ffmpeg.org/ffmpeg-protocols.html#Protocol-Options
-  final List<String> protocolWhitelist;
 
   ///  Sets the options for native backend.
   final Map<String, String>? options;
 
   /// {@macro player_configuration}
   const PlayerConfiguration({
-    this.vo = 'null',
-    this.osc = false,
     this.pitch = false,
     this.title = 'package:media_kit',
     this.ready,
     this.muted = false,
     this.async = true,
     this.libass = false,
-    this.libassAndroidFont,
-    this.libassAndroidFontName,
     this.logLevel = MPVLogLevel.error,
-    this.bufferSize = 32 * 1024 * 1024,
-    this.protocolWhitelist = const [
-      'udp',
-      'rtp',
-      'tcp',
-      'tls',
-      'data',
-      'file',
-      'http',
-      'https',
-      'crypto',
-    ],
     this.options,
   });
 }
