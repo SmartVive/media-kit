@@ -156,6 +156,10 @@ void VideoOutput::NotifyRender() {
 }
 
 void VideoOutput::Render() {
+  if (destroyed_) {
+    return;
+  }
+
   if (texture_id_) {
     // H/W
     if (surface_manager_ != nullptr) {
@@ -175,25 +179,32 @@ void VideoOutput::Render() {
     }
     // S/W
     if (pixel_buffer_ != nullptr) {
-      int32_t size[]{
-          static_cast<int32_t>(pixel_buffer_textures_.at(texture_id_)->width),
-          static_cast<int32_t>(pixel_buffer_textures_.at(texture_id_)->height),
-      };
-      auto pitch = 4 * size[0];
-      mpv_render_param params[]{
-          {MPV_RENDER_PARAM_SW_SIZE, size},
-          {MPV_RENDER_PARAM_SW_FORMAT, "rgb0"},
-          {MPV_RENDER_PARAM_SW_STRIDE, &pitch},
-          {MPV_RENDER_PARAM_SW_POINTER, pixel_buffer_.get()},
-          {MPV_RENDER_PARAM_INVALID, nullptr},
-      };
-      mpv_render_context_render(render_context_, params);
+      std::lock_guard<std::mutex> lock(textures_mutex_);
+      auto it = pixel_buffer_textures_.find(texture_id_);
+      if (it != pixel_buffer_textures_.end()) {
+          int32_t size[]{
+              static_cast<int32_t>(it->second->width),
+              static_cast<int32_t>(it->second->height),
+          };
+          auto pitch = 4 * size[0];
+          mpv_render_param params[]{
+              {MPV_RENDER_PARAM_SW_SIZE, size},
+              {MPV_RENDER_PARAM_SW_FORMAT, "rgb0"},
+              {MPV_RENDER_PARAM_SW_STRIDE, &pitch},
+              {MPV_RENDER_PARAM_SW_POINTER, pixel_buffer_.get()},
+              {MPV_RENDER_PARAM_INVALID, nullptr},
+          };
+          mpv_render_context_render(render_context_, params);
+      }
     }
     try {
       // Notify Flutter that a new frame is available.
       registrar_->texture_registrar()->MarkTextureFrameAvailable(texture_id_);
     } catch (...) {
       // Prevent any redundant exceptions if the texture is unregistered etc.
+    }
+    if (render_context_) {
+        mpv_render_context_report_swap(render_context_);
     }
   }
 }
@@ -239,6 +250,10 @@ void VideoOutput::SetSize(std::optional<int64_t> width,
 }
 
 void VideoOutput::CheckAndResize() {
+    if (destroyed_) {
+      return;
+    }
+
   // Check if a new texture with different dimensions is needed.
   auto required_width = GetVideoWidth(), required_height = GetVideoHeight();
   if (required_width < 1 || required_height < 1) {
@@ -250,14 +265,16 @@ void VideoOutput::CheckAndResize() {
     current_width = surface_manager_->width();
     current_height = surface_manager_->height();
   }
-  if (pixel_buffer_ != nullptr) {
-    current_width = pixel_buffer_textures_.at(texture_id_)->width;
-    current_height = pixel_buffer_textures_.at(texture_id_)->height;
+  if (pixel_buffer_ != nullptr && texture_id_) {
+    std::lock_guard<std::mutex> lock(textures_mutex_);
+    auto it = pixel_buffer_textures_.find(texture_id_);
+    if (it != pixel_buffer_textures_.end()) {
+      current_width = it->second->width;
+      current_height = it->second->height;
+    }
   }
   // Currently rendered video output dimensions.
   // Either H/W or S/W rendered.
-  assert(current_width > 0);
-  assert(current_height > 0);
   if (required_width == current_width && required_height == current_height) {
     // No creation of new texture required.
     return;
@@ -269,8 +286,11 @@ void VideoOutput::Resize(int64_t required_width, int64_t required_height) {
   std::cout << required_width << " " << required_height << std::endl;
   // Unregister previously registered texture & delete underlying objects.
   if (texture_id_) {
+    auto texture_to_unregister = texture_id_;
+    texture_id_ = 0;
+
     registrar_->texture_registrar()->UnregisterTexture(
-        texture_id_, [&, id = texture_id_]() {
+        texture_to_unregister, [this, id = texture_to_unregister]() {
           if (id) {
             std::cout << "media_kit: VideoOutput: Free Texture: " << id
                       << std::endl;
@@ -292,7 +312,6 @@ void VideoOutput::Resize(int64_t required_width, int64_t required_height) {
             }
           }
         });
-    texture_id_ = 0;
   }
   // H/W
   if (surface_manager_ != nullptr) {
@@ -310,14 +329,20 @@ void VideoOutput::Resize(int64_t required_width, int64_t required_height) {
     texture->format = kFlutterDesktopPixelFormatBGRA8888;
     auto texture_variant =
         std::make_unique<flutter::TextureVariant>(flutter::GpuSurfaceTexture(
-            kFlutterDesktopGpuSurfaceTypeDxgiSharedHandle, [&](auto, auto) {
+            kFlutterDesktopGpuSurfaceTypeDxgiSharedHandle,
+            [this](auto, auto) -> FlutterDesktopGpuSurfaceDescriptor* {
               std::lock_guard<std::mutex> lock(textures_mutex_);
+              if (destroyed_) {
+                return nullptr;
+              }
               if (texture_id_) {
                 surface_manager_->Read();
-                return textures_.at(texture_id_).get();
-              } else {
-                return (FlutterDesktopGpuSurfaceDescriptor*)nullptr;
+                auto it = textures_.find(texture_id_);
+                if (it != textures_.end()) {
+                  return it->second.get();
+                }
               }
+              return nullptr;
             }));
     // Register new texture.
     texture_id_ =
@@ -340,13 +365,18 @@ void VideoOutput::Resize(int64_t required_width, int64_t required_height) {
     pixel_buffer_texture->release_context = nullptr;
     pixel_buffer_texture->release_callback = [](void*) {};
     auto texture_variant = std::make_unique<flutter::TextureVariant>(
-        flutter::PixelBufferTexture([&](auto, auto) {
+        flutter::PixelBufferTexture([this](auto, auto) -> FlutterDesktopPixelBuffer* {
           std::lock_guard<std::mutex> lock(textures_mutex_);
-          if (texture_id_) {
-            return pixel_buffer_textures_.at(texture_id_).get();
-          } else {
-            return (FlutterDesktopPixelBuffer*)nullptr;
+          if (destroyed_) {
+              return nullptr;
           }
+          if (texture_id_) {
+            auto it = pixel_buffer_textures_.find(texture_id_);
+            if (it != pixel_buffer_textures_.end()) {
+                return it->second.get();
+            }
+          }
+          return nullptr;
         }));
     // Register new texture.
     texture_id_ =
