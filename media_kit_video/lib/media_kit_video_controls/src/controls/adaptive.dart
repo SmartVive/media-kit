@@ -13,15 +13,5 @@ import 'package:media_kit_video/media_kit_video.dart';
 ///
 /// {@endtemplate}
 Widget AdaptiveVideoControls(VideoState state) {
-  switch (Theme.of(state.context).platform) {
-    case TargetPlatform.android:
-    case TargetPlatform.iOS:
-      return MaterialVideoControls(state);
-    case TargetPlatform.macOS:
-    case TargetPlatform.windows:
-    case TargetPlatform.linux:
-      return MaterialDesktopVideoControls(state);
-    default:
-      return NoVideoControls(state);
-  }
+  return NoVideoControls(state);
 }

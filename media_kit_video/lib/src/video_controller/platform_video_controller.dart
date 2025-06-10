@@ -88,24 +88,6 @@ class VideoControllerConfiguration {
   /// * Android: `auto-safe`
   final String? hwdec;
 
-  /// The scale for the video output.
-  /// This may be used for performance reasons. Specifying this option will cause [width] & [height] to be ignored.
-  ///
-  /// Default: `1.0`
-  final double scale;
-
-  /// The fixed width for the video output.
-  /// This may be used for performance reasons.
-  ///
-  /// Default: `null`
-  final int? width;
-
-  /// The fixed height for the video output.
-  /// This may be used for performance reasons.
-  ///
-  /// Default: `null`
-  final int? height;
-
   /// Whether to enable hardware acceleration.
   ///
   /// DO NOT DISABLE THIS OPTION MEANINGLESSLY.
@@ -114,22 +96,11 @@ class VideoControllerConfiguration {
   /// Default: `true`
   final bool enableHardwareAcceleration;
 
-  /// Whether to attach `android.view.Surface` after video parameters are known.
-  ///
-  /// Default:
-  /// * [vo] == gpu : `true`
-  /// * [vo] != gpu : `false`
-  final bool? androidAttachSurfaceAfterVideoParameters;
-
   /// {@macro video_controller_configuration}
   const VideoControllerConfiguration({
     this.vo,
     this.hwdec,
-    this.width,
-    this.height,
-    this.scale = 1.0,
     this.enableHardwareAcceleration = true,
-    this.androidAttachSurfaceAfterVideoParameters,
   });
 
   /// Returns a copy of this class with the given fields replaced by the new values.
@@ -145,13 +116,7 @@ class VideoControllerConfiguration {
       VideoControllerConfiguration(
         vo: vo ?? this.vo,
         hwdec: hwdec ?? this.hwdec,
-        scale: scale ?? this.scale,
-        width: width ?? this.width,
-        height: height ?? this.height,
         enableHardwareAcceleration:
             enableHardwareAcceleration ?? this.enableHardwareAcceleration,
-        androidAttachSurfaceAfterVideoParameters:
-            androidAttachSurfaceAfterVideoParameters ??
-                this.androidAttachSurfaceAfterVideoParameters,
       );
 }

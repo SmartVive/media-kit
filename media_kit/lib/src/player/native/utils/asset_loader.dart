@@ -7,8 +7,6 @@ import 'dart:io';
 import 'package:path/path.dart' as path;
 import 'package:safe_local_storage/safe_local_storage.dart';
 
-import 'package:media_kit/src/player/native/utils/android_asset_loader.dart';
-
 /// {@template asset_loader}
 ///
 /// AssetLoader
@@ -59,15 +57,6 @@ class AssetLoader {
           'App.framework',
           'flutter_assets',
           key,
-        ),
-      );
-    } else if (Platform.isAndroid) {
-      asset = path.normalize(
-        AndroidAssetLoader.loadSync(
-          path.join(
-            'flutter_assets',
-            key,
-          ),
         ),
       );
     } else {
