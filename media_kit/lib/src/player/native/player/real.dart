@@ -310,199 +310,179 @@ class NativePlayer extends PlatformPlayer {
   }
 
   Future<void> _handler(Pointer<generated.mpv_event> event) async {
-    if(eventObserved.containsKey(event.ref.event_id)) {
-      final fn = eventObserved[event.ref.event_id];
-      if (fn != null) {
-        final data = event.ref.data;
+    if (event == nullptr || event.address == 0) {
+      print('Warning: _handler received null event pointer');
+      return;
+    }
+
+    if (ctx == nullptr || ctx.address == 0) {
+      print('Warning: Invalid ctx in _handler');
+      return;
+    }
+
+    final eventId = event.ref.event_id;
+    final eventData = event.ref.data;
+
+    if (eventObserved.containsKey(eventId)) {
+      final fn = eventObserved[eventId];
+      if (fn != null && eventData != nullptr) {
         try {
-          await fn.call(data);
+          await fn.call(eventData);
         } catch (exception, stacktrace) {
-          print(exception);
+          print('Error in event observer: $exception');
           print(stacktrace);
         }
       }
     }
 
-    if (event.ref.event_id ==
-        generated.mpv_event_id.MPV_EVENT_PROPERTY_CHANGE) {
-      final prop = event.ref.data.cast<generated.mpv_event_property>();
-      if (prop.ref.name.cast<Utf8>().toDartString() == 'idle-active' &&
-          prop.ref.format == generated.mpv_format.MPV_FORMAT_FLAG) {
-        await future;
-        // The [Player] has entered the idle state; initialization is complete.
-        if (!completer.isCompleted) {
-          completer.complete();
+    if (eventId == generated.mpv_event_id.MPV_EVENT_PROPERTY_CHANGE && eventData != nullptr) {
+      try {
+        final prop = eventData.cast<generated.mpv_event_property>();
+        if (prop.ref.name != nullptr) {
+          final propName = prop.ref.name.cast<Utf8>().toDartString();
+          if (propName == 'idle-active' &&
+              prop.ref.format == generated.mpv_format.MPV_FORMAT_FLAG) {
+            await future;
+            // The [Player] has entered the idle state; initialization is complete.
+            if (!completer.isCompleted) {
+              completer.complete();
+            }
+          }
         }
+      } catch (e) {
+        print('Error checking idle state: $e');
       }
     }
-    if (event.ref.event_id ==
-        generated.mpv_event_id.MPV_EVENT_SET_PROPERTY_REPLY) {
+
+    // Handle set property replies
+    if (eventId == generated.mpv_event_id.MPV_EVENT_SET_PROPERTY_REPLY) {
       final completer = _setPropertyRequests.remove(event.ref.reply_userdata);
       if (completer == null) {
-        print(
-            'Warning: Received MPV_EVENT_SET_PROPERTY_REPLY with unregistered ID ${event.ref.reply_userdata}');
-      } else {
-        completer.complete(event.ref.error);
-      }
-    }
-    if (event.ref.event_id == generated.mpv_event_id.MPV_EVENT_COMMAND_REPLY) {
-      final completer = _commandRequests.remove(event.ref.reply_userdata);
-      if (completer == null) {
-        print(
-            'Warning: Received MPV_EVENT_COMMAND_REPLY with unregistered ID ${event.ref.reply_userdata}');
+        print('Warning: Received MPV_EVENT_SET_PROPERTY_REPLY with unregistered ID ${event.ref.reply_userdata}');
       } else {
         completer.complete(event.ref.error);
       }
     }
 
+    // Handle command replies
+    if (eventId == generated.mpv_event_id.MPV_EVENT_COMMAND_REPLY) {
+      final completer = _commandRequests.remove(event.ref.reply_userdata);
+      if (completer == null) {
+        print('Warning: Received MPV_EVENT_COMMAND_REPLY with unregistered ID ${event.ref.reply_userdata}');
+      } else {
+        completer.complete(event.ref.error);
+      }
+    }
+
+    // Skip events before initialization
     if (!completer.isCompleted) {
-      // Ignore the events which are fired before the initialization.
       return;
     }
 
-    _logError(
-      event.ref.error,
-      'event:${event.ref.event_id} ${event.ref.data.cast<Uint8>()}',
-    );
+    _logError(event.ref.error, 'event:$eventId ${eventData != nullptr ? eventData.cast<Uint8>() : 'null'}');
 
-    if (event.ref.event_id ==
-        generated.mpv_event_id.MPV_EVENT_PROPERTY_CHANGE) {
-      final prop = event.ref.data.cast<generated.mpv_event_property>();
+    // Handle property changes after initialization
+    if (eventId == generated.mpv_event_id.MPV_EVENT_PROPERTY_CHANGE && eventData != nullptr) {
+      try {
+        final prop = eventData.cast<generated.mpv_event_property>();
+        if (prop.ref.name != nullptr) {
+          final propName = prop.ref.name.cast<Utf8>().toDartString();
+          if (observed.containsKey(propName)) {
+            if (prop.ref.format == generated.mpv_format.MPV_FORMAT_NONE) {
+              final fn = observed[propName];
+              if (fn != null) {
+                final data = mpv.mpv_get_property_string(ctx, prop.ref.name);
+                if (data != nullptr) {
+                  try {
+                    await fn.call(data.cast<Utf8>().toDartString());
+                  } catch (exception, stacktrace) {
+                    print('Error in property observer: $exception');
+                    print(stacktrace);
+                  } finally {
+                    mpv.mpv_free(data.cast());
+                  }
+                }
+              }
+            }
+          }
+        }
+      } catch (e) {
+        print('Error handling property change: $e');
+      }
+    }
 
-      if (observed.containsKey(prop.ref.name.cast<Utf8>().toDartString())) {
-        if (prop.ref.format == generated.mpv_format.MPV_FORMAT_NONE) {
-          final fn = observed[prop.ref.name.cast<Utf8>().toDartString()];
-          if (fn != null) {
-            final data = mpv.mpv_get_property_string(ctx, prop.ref.name);
-            if (data != nullptr) {
+    // Handle log messages
+    if (eventId == generated.mpv_event_id.MPV_EVENT_LOG_MESSAGE && eventData != nullptr) {
+      try {
+        final eventLogMessage = eventData.cast<generated.mpv_event_log_message>().ref;
+        final prefix = eventLogMessage.prefix != nullptr
+            ? eventLogMessage.prefix.cast<Utf8>().toDartString().trim()
+            : '';
+        final level = eventLogMessage.level != nullptr
+            ? eventLogMessage.level.cast<Utf8>().toDartString().trim()
+            : '';
+        final text = eventLogMessage.text != nullptr
+            ? eventLogMessage.text.cast<Utf8>().toDartString().trim()
+            : '';
+
+        if (!logController.isClosed) {
+          logController.add(PlayerLog(prefix: prefix, level: level, text: text));
+
+          // Emit errors based on log messages
+          if (level == 'error' && !errorController.isClosed) {
+            if ((prefix == 'file') ||
+                (prefix == 'ffmpeg' && text.startsWith('tcp:')) ||
+                (prefix == 'vd') ||
+                (prefix == 'ad') ||
+                (prefix == 'cplayer') ||
+                (prefix == 'stream')) {
+              errorController.add(text);
+            }
+          }
+        }
+      } catch (e) {
+        print('Error handling log message: $e');
+      }
+    }
+
+    // Handle hooks
+    if (eventId == generated.mpv_event_id.MPV_EVENT_HOOK && eventData != nullptr) {
+      try {
+        final prop = eventData.cast<generated.mpv_event_hook>();
+        if (prop.ref.name != nullptr) {
+          final hookName = prop.ref.name.cast<Utf8>().toDartString();
+
+          List<Future<void> Function()>? hooks;
+          switch (hookName) {
+            case 'on_load':
+              hooks = onLoadHooks;
+              break;
+            case 'on_unload':
+              hooks = onUnloadHooks;
+              break;
+            case 'on_load_fail':
+              hooks = onLoadFailHooks;
+              break;
+            case 'on_preloaded':
+              hooks = onPreloadedHooks;
+              break;
+          }
+
+          if (hooks != null) {
+            for (final hook in hooks) {
               try {
-                await fn.call(data.cast<Utf8>().toDartString());
+                await hook.call();
               } catch (exception, stacktrace) {
-                print(exception);
+                print('Error in $hookName hook: $exception');
                 print(stacktrace);
               }
-              mpv.mpv_free(data.cast());
             }
           }
+
+          mpv.mpv_hook_continue(ctx, prop.ref.id);
         }
-      }
-    }
-    if (event.ref.event_id == generated.mpv_event_id.MPV_EVENT_LOG_MESSAGE) {
-      final eventLogMessage =
-          event.ref.data.cast<generated.mpv_event_log_message>().ref;
-      final prefix = eventLogMessage.prefix.cast<Utf8>().toDartString().trim();
-      final level = eventLogMessage.level.cast<Utf8>().toDartString().trim();
-      final text = eventLogMessage.text.cast<Utf8>().toDartString().trim();
-      if (!logController.isClosed) {
-        logController.add(
-          PlayerLog(
-            prefix: prefix,
-            level: level,
-            text: text,
-          ),
-        );
-        // --------------------------------------------------
-        // Emit error(s) based on the log messages.
-        if (level == 'error') {
-          if (prefix == 'file') {
-            // file:// not found.
-            if (!errorController.isClosed) {
-              errorController.add(text);
-            }
-          }
-          if (prefix == 'ffmpeg') {
-            if (text.startsWith('tcp:')) {
-              // http:// error of any kind.
-              if (!errorController.isClosed) {
-                errorController.add(text);
-              }
-            }
-          }
-          if (prefix == 'vd') {
-            if (!errorController.isClosed) {
-              errorController.add(text);
-            }
-          }
-          if (prefix == 'ad') {
-            if (!errorController.isClosed) {
-              errorController.add(text);
-            }
-          }
-          if (prefix == 'cplayer') {
-            if (!errorController.isClosed) {
-              errorController.add(text);
-            }
-          }
-          if (prefix == 'stream') {
-            if (!errorController.isClosed) {
-              errorController.add(text);
-            }
-          }
-        }
-        // --------------------------------------------------
-      }
-    }
-    if (event.ref.event_id == generated.mpv_event_id.MPV_EVENT_HOOK) {
-      final prop = event.ref.data.cast<generated.mpv_event_hook>();
-      if (prop.ref.name.cast<Utf8>().toDartString() == 'on_load') {
-        // --------------------------------------------------
-        for (final hook in onLoadHooks) {
-          try {
-            await hook.call();
-          } catch (exception, stacktrace) {
-            print(exception);
-            print(stacktrace);
-          }
-        }
-        // --------------------------------------------------
-        mpv.mpv_hook_continue(
-          ctx,
-          prop.ref.id,
-        );
-      }
-      if (prop.ref.name.cast<Utf8>().toDartString() == 'on_unload') {
-        // --------------------------------------------------
-        for (final hook in onUnloadHooks) {
-          try {
-            await hook.call();
-          } catch (exception, stacktrace) {
-            print(exception);
-            print(stacktrace);
-          }
-        }
-        // --------------------------------------------------
-        mpv.mpv_hook_continue(
-          ctx,
-          prop.ref.id,
-        );
-      }
-      if (prop.ref.name.cast<Utf8>().toDartString() == 'on_load_fail') {
-        for (final hook in onLoadFailHooks) {
-          try {
-            await hook.call();
-          } catch (exception, stacktrace) {
-            print(exception);
-            print(stacktrace);
-          }
-        }
-        mpv.mpv_hook_continue(
-          ctx,
-          prop.ref.id,
-        );
-      }
-      if (prop.ref.name.cast<Utf8>().toDartString() == 'on_preloaded') {
-        for (final hook in onPreloadedHooks) {
-          try {
-            await hook.call();
-          } catch (exception, stacktrace) {
-            print(exception);
-            print(stacktrace);
-          }
-        }
-        mpv.mpv_hook_continue(
-          ctx,
-          prop.ref.id,
-        );
+      } catch (e) {
+        print('Error handling hook: $e');
       }
     }
   }
