@@ -7,7 +7,6 @@ import 'dart:async';
 import 'package:flutter/widgets.dart';
 
 import 'package:media_kit_video/src/video/video.dart';
-import 'package:media_kit_video/src/subtitle/subtitle_view.dart';
 
 /// {@template video_view_parameters}
 ///
@@ -26,7 +25,6 @@ class VideoViewParameters {
   final double? aspectRatio;
   final FilterQuality filterQuality;
   final /* VideoControlsBuilder? */ dynamic controls;
-  final SubtitleViewConfiguration subtitleViewConfiguration;
   final FocusNode? focusNode;
 
   /// {@macro video_view_parameters}
@@ -39,7 +37,6 @@ class VideoViewParameters {
     required this.aspectRatio,
     required this.filterQuality,
     required this.controls,
-    required this.subtitleViewConfiguration,
     this.focusNode,
   });
 
@@ -54,7 +51,6 @@ class VideoViewParameters {
     /* VideoControlsBuilder? */ dynamic controls,
     bool? pauseUponEnteringBackgroundMode,
     bool? resumeUponEnteringForegroundMode,
-    SubtitleViewConfiguration? subtitleViewConfiguration,
     Future<void> Function()? onEnterFullscreen,
     Future<void> Function()? onExitFullscreen,
     FocusNode? focusNode,
@@ -68,8 +64,6 @@ class VideoViewParameters {
       aspectRatio: aspectRatio ?? this.aspectRatio,
       filterQuality: filterQuality ?? this.filterQuality,
       controls: controls ?? this.controls,
-      subtitleViewConfiguration:
-          subtitleViewConfiguration ?? this.subtitleViewConfiguration,
       focusNode: focusNode ?? this.focusNode,
     );
   }
@@ -86,7 +80,6 @@ class VideoViewParameters {
           other.aspectRatio == aspectRatio &&
           other.filterQuality == filterQuality &&
           other.controls == controls &&
-          other.subtitleViewConfiguration == subtitleViewConfiguration &&
           other.focusNode == focusNode;
 
   @override
@@ -99,6 +92,5 @@ class VideoViewParameters {
       aspectRatio.hashCode ^
       filterQuality.hashCode ^
       controls.hashCode ^
-      subtitleViewConfiguration.hashCode ^
       focusNode.hashCode;
 }
