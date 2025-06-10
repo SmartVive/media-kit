@@ -67,8 +67,7 @@ class NativeVideoController extends PlatformVideoController {
   NativeVideoController._(
     super.player,
     super.configuration,
-  )   : width = configuration.width,
-        height = configuration.height {
+  ) {
     videoViewSizeSubscription = player.stream.videoViewSize.listen(
       (event) => lock.synchronized(() async {
         _resizeDebounceTimer?.cancel();
@@ -176,8 +175,8 @@ class NativeVideoController extends PlatformVideoController {
       {
         'handle': handle.toString(),
         'configuration': {
-          'width': configuration.width.toString(),
-          'height': configuration.height.toString(),
+          'width': "null",
+          'height': "null",
           'enableHardwareAcceleration':
               configuration.enableHardwareAcceleration,
         },

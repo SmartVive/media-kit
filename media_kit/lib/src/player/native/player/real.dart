@@ -14,7 +14,6 @@ import 'package:media_kit/ffi/ffi.dart';
 import 'package:media_kit/src/models/player_log.dart';
 import 'package:media_kit/src/player/native/core/initializer.dart';
 import 'package:media_kit/src/player/native/core/native_library.dart';
-import 'package:media_kit/src/player/native/utils/android_helper.dart';
 import 'package:media_kit/src/player/native/utils/native_reference_holder.dart';
 import 'package:media_kit/src/player/platform_player.dart';
 
@@ -22,7 +21,6 @@ import 'package:media_kit/generated/libmpv/bindings.dart' as generated;
 
 /// Initializes the native backend for package:media_kit.
 void nativeEnsureInitialized({String? libmpv}) {
-  AndroidHelper.ensureInitialized();
   NativeLibrary.ensureInitialized(libmpv: libmpv);
   NativeReferenceHolder.ensureInitialized((references) async {
     if (references.isEmpty) {

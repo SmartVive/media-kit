@@ -65,15 +65,11 @@ class Video extends StatefulWidget {
   /// Video controls builder.
   final VideoControlsBuilder? controls;
 
-  /// FocusNode for keyboard input.
-  final FocusNode? focusNode;
-
   /// {@macro video}
   const Video({
     Key? key,
     required this.controller,
     this.controls = media_kit_video_controls.AdaptiveVideoControls,
-    this.focusNode,
   }) : super(key: key);
 
   @override
@@ -126,51 +122,47 @@ class VideoState extends State<Video> with WidgetsBindingObserver {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          ClipRect(
-            child: FittedBox(
-              child: ValueListenableBuilder<PlatformVideoController?>(
-                valueListenable: widget.controller.notifier,
-                builder: (context, notifier, _) => notifier == null
-                    ? const SizedBox.shrink()
-                    : ValueListenableBuilder<int?>(
-                  valueListenable: notifier.id,
-                  builder: (context, id, _) {
-                    return ValueListenableBuilder<Rect?>(
-                      valueListenable: notifier.rect,
-                      builder: (context, rect, _) {
-                        if (id != null && rect != null) {
-                          return SizedBox(
-                            // Apply aspect ratio if provided.
-                            width:  rect.width,
-                            height: rect.height,
-                            child: Stack(
-                              children: [
-                                const SizedBox(),
-                                Positioned.fill(
-                                  child: Texture(
-                                    textureId: id,
-                                  ),
-                                ),
-                                // Keep the |Texture| hidden before the first frame renders. In native implementation, if no default frame size is passed (through VideoController), a starting 1 pixel sized texture/surface is created to initialize the render context & check for H/W support.
-                                // This is then resized based on the video dimensions & accordingly texture ID, texture, EGLDisplay, EGLSurface etc. (depending upon platform) are also changed. Just don't show that 1 pixel texture to the UI.
-                                // NOTE: Unmounting |Texture| causes the |MarkTextureFrameAvailable| to not do anything on GNU/Linux.
-                                if (rect.width <= 1.0 &&
-                                    rect.height <= 1.0)
-                                  Positioned.fill(
-                                    child: Container(
-                                      color: const Color(0xFF000000),
-                                    ),
-                                  ),
-                              ],
+          ValueListenableBuilder<PlatformVideoController?>(
+            valueListenable: widget.controller.notifier,
+            builder: (context, notifier, _) => notifier == null
+                ? const SizedBox.shrink()
+                : ValueListenableBuilder<int?>(
+              valueListenable: notifier.id,
+              builder: (context, id, _) {
+                return ValueListenableBuilder<Rect?>(
+                  valueListenable: notifier.rect,
+                  builder: (context, rect, _) {
+                    if (id != null && rect != null) {
+                      return SizedBox(
+                        // Apply aspect ratio if provided.
+                        width:  rect.width,
+                        height: rect.height,
+                        child: Stack(
+                          children: [
+                            const SizedBox(),
+                            Positioned.fill(
+                              child: Texture(
+                                textureId: id,
+                              ),
                             ),
-                          );
-                        }
-                        return const SizedBox.shrink();
-                      },
-                    );
+                            // Keep the |Texture| hidden before the first frame renders. In native implementation, if no default frame size is passed (through VideoController), a starting 1 pixel sized texture/surface is created to initialize the render context & check for H/W support.
+                            // This is then resized based on the video dimensions & accordingly texture ID, texture, EGLDisplay, EGLSurface etc. (depending upon platform) are also changed. Just don't show that 1 pixel texture to the UI.
+                            // NOTE: Unmounting |Texture| causes the |MarkTextureFrameAvailable| to not do anything on GNU/Linux.
+                            if (rect.width <= 1.0 &&
+                                rect.height <= 1.0)
+                              Positioned.fill(
+                                child: Container(
+                                  color: const Color(0xFF000000),
+                                ),
+                              ),
+                          ],
+                        ),
+                      );
+                    }
+                    return const SizedBox.shrink();
                   },
-                ),
-              ),
+                );
+              },
             ),
           ),
           if (widget.controls != null)
