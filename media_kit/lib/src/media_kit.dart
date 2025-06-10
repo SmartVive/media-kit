@@ -7,7 +7,6 @@
 import 'package:universal_platform/universal_platform.dart';
 
 import 'package:media_kit/src/player/native/player/player.dart';
-import 'package:media_kit/src/player/web/player/player.dart';
 
 /// {@template media_kit}
 ///
@@ -34,8 +33,6 @@ abstract class MediaKit {
         nativeEnsureInitialized(libmpv: libmpv);
       } else if (UniversalPlatform.isAndroid) {
         nativeEnsureInitialized(libmpv: libmpv);
-      } else if (UniversalPlatform.isWeb) {
-        webEnsureInitialized(libmpv: libmpv);
       }
       _initialized = true;
     } catch (_) {

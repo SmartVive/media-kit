@@ -5,20 +5,10 @@
 /// Use of this source code is governed by MIT license that can be found in the LICENSE file.
 
 import 'dart:async';
-import 'dart:typed_data';
 import 'package:meta/meta.dart';
 import 'package:collection/collection.dart';
 
-import 'package:media_kit/src/models/track.dart';
-import 'package:media_kit/src/models/playable.dart';
-import 'package:media_kit/src/models/playlist.dart';
 import 'package:media_kit/src/models/player_log.dart';
-import 'package:media_kit/src/models/media/media.dart';
-import 'package:media_kit/src/models/audio_device.dart';
-import 'package:media_kit/src/models/audio_params.dart';
-import 'package:media_kit/src/models/video_params.dart';
-import 'package:media_kit/src/models/player_state.dart';
-import 'package:media_kit/src/models/playlist_mode.dart';
 import 'package:media_kit/src/models/player_stream.dart';
 
 /// {@template platform_player}
@@ -38,75 +28,8 @@ abstract class PlatformPlayer {
   /// User defined configuration for [Player].
   final PlayerConfiguration configuration;
 
-  /// Current state of the player.
-  late PlayerState state = PlayerState();
-
   /// Current state of the player available as listenable [Stream]s.
   late PlayerStream stream = PlayerStream(
-    playlistController.stream.distinct(
-      (previous, current) => previous == current,
-    ),
-    playingController.stream.distinct(
-      (previous, current) => previous == current,
-    ),
-    completedController.stream.distinct(
-      (previous, current) => previous == current,
-    ),
-    positionController.stream.distinct(
-      (previous, current) => previous == current,
-    ),
-    durationController.stream.distinct(
-      (previous, current) => previous == current,
-    ),
-    volumeController.stream.distinct(
-      (previous, current) => previous == current,
-    ),
-    rateController.stream.distinct(
-      (previous, current) => previous == current,
-    ),
-    pitchController.stream.distinct(
-      (previous, current) => previous == current,
-    ),
-    bufferingController.stream.distinct(
-      (previous, current) => previous == current,
-    ),
-    bufferingPercentageController.stream.distinct(
-      (previous, current) => previous == current,
-    ),
-    bufferController.stream.distinct(
-      (previous, current) => previous == current,
-    ),
-    playlistModeController.stream.distinct(
-      (previous, current) => previous == current,
-    ),
-    /* AUDIO-PARAMS STREAM SHOULD NOT BE DISTINCT */
-    audioParamsController.stream,
-    /* VIDEO-PARAMS STREAM SHOULD NOT BE DISTINCT */
-    videoParamsController.stream,
-    audioBitrateController.stream.distinct(
-      (previous, current) => previous == current,
-    ),
-    audioDeviceController.stream.distinct(
-      (previous, current) => previous == current,
-    ),
-    audioDevicesController.stream.distinct(
-      (previous, current) => ListEquality().equals(previous, current),
-    ),
-    trackController.stream.distinct(
-      (previous, current) => previous == current,
-    ),
-    tracksController.stream.distinct(
-      (previous, current) => previous == current,
-    ),
-    widthController.stream.distinct(
-      (previous, current) => previous == current,
-    ),
-    heightController.stream.distinct(
-      (previous, current) => previous == current,
-    ),
-    subtitleController.stream.distinct(
-      (previous, current) => ListEquality().equals(previous, current),
-    ),
     logController.stream.distinct(
       (previous, current) => previous == current,
     ),
@@ -121,30 +44,9 @@ abstract class PlatformPlayer {
   Future<void> dispose() async {
     await Future.wait(
       [
-        playlistController.close(),
-        playingController.close(),
-        completedController.close(),
-        positionController.close(),
-        durationController.close(),
-        volumeController.close(),
-        rateController.close(),
-        pitchController.close(),
-        bufferingController.close(),
-        bufferingPercentageController.close(),
-        bufferController.close(),
-        playlistModeController.close(),
-        audioParamsController.close(),
-        videoParamsController.close(),
-        audioBitrateController.close(),
-        audioDeviceController.close(),
-        audioDevicesController.close(),
-        trackController.close(),
-        tracksController.close(),
-        widthController.close(),
-        heightController.close(),
-        subtitleController.close(),
         logController.close(),
         errorController.close(),
+        videoViewSizeController.close()
       ],
     );
     for (final callback in release) {
@@ -164,98 +66,12 @@ abstract class PlatformPlayer {
   }
 
   @protected
-  final StreamController<Playlist> playlistController =
-      StreamController<Playlist>.broadcast();
-
-  @protected
-  final StreamController<bool> playingController =
-      StreamController<bool>.broadcast();
-
-  @protected
-  final StreamController<bool> completedController =
-      StreamController<bool>.broadcast();
-
-  @protected
-  final StreamController<Duration> positionController =
-      StreamController<Duration>.broadcast();
-
-  @protected
-  final StreamController<Duration> durationController =
-      StreamController.broadcast();
-
-  @protected
-  final StreamController<double> volumeController =
-      StreamController.broadcast();
-
-  @protected
-  final StreamController<double> rateController =
-      StreamController<double>.broadcast();
-
-  @protected
-  final StreamController<double> pitchController =
-      StreamController<double>.broadcast();
-
-  @protected
-  final StreamController<bool> bufferingController =
-      StreamController<bool>.broadcast();
-  @protected
-  final StreamController<double> bufferingPercentageController =
-      StreamController<double>.broadcast();
-  @protected
-  final StreamController<Duration> bufferController =
-      StreamController<Duration>.broadcast();
-
-  @protected
-  final StreamController<PlaylistMode> playlistModeController =
-      StreamController<PlaylistMode>.broadcast();
-
-  @protected
   final StreamController<PlayerLog> logController =
       StreamController<PlayerLog>.broadcast();
 
   @protected
   final StreamController<String> errorController =
       StreamController<String>.broadcast();
-
-  @protected
-  final StreamController<AudioParams> audioParamsController =
-      StreamController<AudioParams>.broadcast();
-
-  @protected
-  final StreamController<VideoParams> videoParamsController =
-      StreamController<VideoParams>.broadcast();
-
-  @protected
-  final StreamController<double?> audioBitrateController =
-      StreamController<double?>.broadcast();
-
-  @protected
-  final StreamController<AudioDevice> audioDeviceController =
-      StreamController<AudioDevice>.broadcast();
-
-  @protected
-  final StreamController<List<AudioDevice>> audioDevicesController =
-      StreamController<List<AudioDevice>>.broadcast();
-
-  @protected
-  final StreamController<Track> trackController =
-      StreamController<Track>.broadcast();
-
-  @protected
-  final StreamController<Tracks> tracksController =
-      StreamController<Tracks>.broadcast();
-
-  @protected
-  final StreamController<int?> widthController =
-      StreamController<int?>.broadcast();
-
-  @protected
-  final StreamController<int?> heightController =
-      StreamController<int?>.broadcast();
-
-  @protected
-  final StreamController<List<String>> subtitleController =
-      StreamController<List<String>>.broadcast();
 
   final StreamController<List<int>> videoViewSizeController =
       StreamController<List<int>>.broadcast();

@@ -3,20 +3,11 @@
 /// Copyright © 2021 & onwards, Hitesh Kumar Saini <saini123hitesh@gmail.com>.
 /// All rights reserved.
 /// Use of this source code is governed by MIT license that can be found in the LICENSE file.
-import 'dart:typed_data';
 import 'package:universal_platform/universal_platform.dart';
 
-import 'package:media_kit/src/models/track.dart';
-import 'package:media_kit/src/models/playable.dart';
-import 'package:media_kit/src/models/playlist.dart';
-import 'package:media_kit/src/models/media/media.dart';
-import 'package:media_kit/src/models/audio_device.dart';
-import 'package:media_kit/src/models/player_state.dart';
-import 'package:media_kit/src/models/playlist_mode.dart';
 import 'package:media_kit/src/models/player_stream.dart';
 
 import 'package:media_kit/src/player/native/player/player.dart';
-import 'package:media_kit/src/player/web/player/player.dart';
 import 'package:media_kit/src/player/platform_player.dart';
 
 /// {@template player}
@@ -113,16 +104,11 @@ class Player {
       platform = NativePlayer(configuration: configuration);
     } else if (UniversalPlatform.isAndroid) {
       platform = NativePlayer(configuration: configuration);
-    } else if (UniversalPlatform.isWeb) {
-      platform = WebPlayer(configuration: configuration);
     }
   }
 
   /// Platform specific internal implementation initialized depending upon the current platform.
   PlatformPlayer? platform;
-
-  /// Current state of the [Player].
-  PlayerState get state => platform!.state;
 
   /// Current state of the [Player] available as listenable [Stream]s.
   PlayerStream get stream => platform!.stream;
