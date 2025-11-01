@@ -64,11 +64,11 @@ function(check_directory_exists_and_not_empty dir result_var)
 endfunction()
 
 # libmpv archive containing the pre-built shared libraries & headers.
-set(LIBMPV "mpv-dev-lgpl-x86_64-20250724-git-ff1bb2f.7z")
+set(LIBMPV "mpv-dev-lgpl-x86_64-20251101-git-d3ec15b.7z")
 
 # Download URL & MD5 hash of the libmpv archive.
-set(LIBMPV_URL "https://github.com/SmartVive/mpv-winbuild/releases/download/2025-07-24-ff1bb2f/${LIBMPV}")
-set(LIBMPV_MD5 "3217514c6a3734a16c94aac6c86bf0f2")
+set(LIBMPV_URL "https://github.com/SmartVive/mpv-winbuild/releases/download/2025-11-01-d3ec15b/${LIBMPV}")
+set(LIBMPV_MD5 "9eaf281fdff77183170e18f38fd3b7d6")
 
 # Download location of the libmpv archive.
 set(LIBMPV_ARCHIVE "${CMAKE_BINARY_DIR}/${LIBMPV}")
